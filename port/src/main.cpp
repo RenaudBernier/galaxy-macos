@@ -135,7 +135,8 @@ int main(int argc, char** argv) {
     config.logLevel = LOG_INFO;
     config.mem1Size = 0;  // the port manages game memory itself
     config.mem2Size = 0;
-    aurora_initialize(argc, argv, &config);
+    const AuroraInfo info = aurora_initialize(argc, argv, &config);
+    port::frame::configureFrameRate(info.window);
 
     GXSetAuroraPhysicalResolver(resolvePhysical);
     aurora_dvd_set_callback_dispatcher(dvdDispatch);

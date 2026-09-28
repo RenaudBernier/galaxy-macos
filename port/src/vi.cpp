@@ -9,6 +9,13 @@
 // the port submits the Aurora frame, pumps window/input events, waits for the
 // next retrace and begins the next Aurora frame. VIInit/VIConfigure/VIFlush/
 // VIGetTvFormat come from Aurora.
+//
+// At 120 fps (on displays of 100 Hz or more, unless SMG_FPS=60) the game
+// still runs at 60 Hz, and the port shows an extra frame between two game
+// frames: Aurora renders each game frame first with its matrices blended
+// halfway toward the previous frame's, then exactly (GXAuroraInterpReplay),
+// and vsync presents the two on consecutive refreshes. Game code tags the
+// objects it draws (port/interp.h) so matrices can be matched across frames.
 
 #include "os/scheduler.hpp"
 #include "port/frame.hpp"
@@ -17,13 +24,17 @@
 #include <aurora/aurora.h>
 #include <aurora/event.h>
 #include <aurora/gfx.h>
+#include <dolphin/gx/GXAurora.h>
 #include <revolution/vi.h>
+#include <SDL3/SDL_video.h>
 
 #include <pthread.h>
 
 #include <atomic>
-#include <cstring>
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
+#include <string_view>
 #include <thread>
 
 namespace port::input {
@@ -52,6 +63,38 @@ bool sDimming = false;
 OSThread* sRenderThread = nullptr;
 bool sFrameOpen = false;
 bool sQuitRequested = false;
+SDL_Window* sWindow = nullptr;
+bool sInterpolate = false;
+bool sFrameRateStale = true;
+const void* sInterpTag = nullptr;
+
+// 120 fps needs a display of 100 Hz or more: the two frames of each game
+// frame are paced by the display (vsync), so a 60 Hz display would run the
+// game at half speed. At 60 fps the VI retrace timer paces frames instead.
+void updateFrameRate() {
+    sFrameRateStale = false;
+    const char* setting = getenv("SMG_FPS");
+    const SDL_DisplayMode* mode = sWindow != nullptr ? SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(sWindow)) : nullptr;
+    const bool interpolate = !(setting != nullptr && std::string_view(setting) == "60") && mode != nullptr &&
+                             mode->refresh_rate >= 100.0f;
+    if (interpolate == sInterpolate) {
+        return;
+    }
+    sInterpolate = interpolate;
+    GXAuroraInterpSetEnabled(interpolate ? GX_TRUE : GX_FALSE);
+    aurora_enable_vsync(interpolate);
+    PORT_INFO("vi", "{} fps", interpolate ? 120 : 60);
+}
+
+// Ends a game frame at 120 fps: the frame just drawn was rendered halfway
+// toward the previous one and is presented first, then the exact frame.
+void endInterpolatedFrame() {
+    aurora_end_frame();
+    if (aurora_begin_frame()) {
+        GXAuroraInterpReplay();
+        aurora_end_frame();
+    }
+}
 
 void retraceInterrupt() {
     const u32 count = ++sRetraceCount;
@@ -86,6 +129,10 @@ void pumpEvents() {
     for (; event != nullptr && event->type != AURORA_NONE; event++) {
         switch (event->type) {
         case AURORA_SDL_EVENT:
+            if (event->sdl.type == SDL_EVENT_WINDOW_DISPLAY_CHANGED ||
+                event->sdl.type == SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED) {
+                sFrameRateStale = true;
+            }
             port::input::handleEvent(event->sdl);
             break;
         case AURORA_EXIT:
@@ -103,6 +150,11 @@ void pumpEvents() {
 }  // namespace
 
 namespace port::frame {
+
+void configureFrameRate(SDL_Window* window) {
+    sWindow = window;
+    updateFrameRate();
+}
 
 void init() {
     OSInitThreadQueue(&sRetraceQueue);
@@ -149,9 +201,16 @@ void PortGXCopyDisp(void* dest, GXBool clear) {
         return;
     }
     beginHostWork();
-    aurora_end_frame();
+    if (sInterpolate) {
+        endInterpolatedFrame();
+    } else {
+        aurora_end_frame();
+    }
     sFrameOpen = false;
     pumpEvents();
+    if (sFrameRateStale) {
+        updateFrameRate();  // between frames, so no frame is half interpolated
+    }
     while (!aurora_begin_frame()) {
         // Window not presentable (e.g. minimized).
         pumpEvents();
@@ -201,5 +260,14 @@ BOOL VIResetDimmingCount(void) { return TRUE; }
 u32 VIGetCurrentLine(void) { return 0; }
 u32 VIGetScanMode(void) { return 2; }  // progressive
 void VISetTrapFilter(VIBool) {}
+
+void PortInterpTag(const void* tag) {
+    if (sInterpolate) {
+        sInterpTag = tag;
+        GXAuroraInterpTag(reinterpret_cast<uintptr_t>(tag));
+    }
+}
+
+const void* PortInterpCurrentTag(void) { return sInterpTag; }
 
 }  // extern "C"

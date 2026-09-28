@@ -6,7 +6,7 @@
   for arm64 macOS against the host runtime and Aurora.
 * Boot, strap screen, title (with streamed music), file select, save data
   (host files), the prologue (picture book, Peach's letter) and gameplay, at a
-  steady 60 fps.
+  steady 60 fps, or 120 fps with interpolated frames on 120 Hz displays.
 * THP movies: video (baseline JPEG with THP's quirks) and audio; the prologue
   movie plays with subtitles. All nine movies on the disc decode cleanly
   offline (every frame of every movie).
@@ -28,6 +28,9 @@
   (Aurora logs "unhandled tcg src 21"); it gets zero coordinates.
 * Save data is written in a mixed-endian layout (self-consistent, not
   compatible with Wii saves).
+* At 120 fps only transforms are interpolated: vertices the game computes on
+  the CPU each frame (some trails, lines and effects) and texture animations
+  still update at 60 Hz.
 * Paired-single reciprocal/sqrt estimates (`frsqrte`, `fres`) use exact host
   math instead of the Broadway's table-based estimates.
 

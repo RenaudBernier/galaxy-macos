@@ -69,11 +69,11 @@ Status
 ======
 
 Boot, the title screen, file select, the prologue and gameplay run at 60 fps
-with sound, and every galaxy loads. An experimental 120 fps mode (interpolated
-frames on 120 Hz displays) is on the
-[`120fps`](https://github.com/RenaudBernier/galaxy-macos/tree/120fps) branch.
-Miis and the HOME Menu are disabled, and later-game content has not been fully
-tested yet. See [port/STATUS.md](port/STATUS.md) for details and known gaps.
+with sound, and every galaxy loads. On displays of 100 Hz or more, the port
+shows 120 fps by rendering an interpolated frame between game frames (see
+[port/README.md](port/README.md#frame-rate)). Miis and the HOME Menu are
+disabled, and later-game content has not been fully tested yet. See
+[port/STATUS.md](port/STATUS.md) for details and known gaps.
 
 The decompilation
 =================

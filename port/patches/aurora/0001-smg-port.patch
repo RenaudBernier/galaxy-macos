@@ -1,3 +1,15 @@
+diff --git a/cmake/aurora_gx.cmake b/cmake/aurora_gx.cmake
+index 02a96af..5831ebd 100644
+--- a/cmake/aurora_gx.cmake
++++ b/cmake/aurora_gx.cmake
+@@ -20,6 +20,7 @@ add_library(aurora_gx STATIC
+         lib/gx/dl.cpp
+         lib/gx/fifo.cpp
+         lib/gx/gx.cpp
++        lib/gx/interp.cpp
+         lib/gx/texture.cpp
+         lib/gx/pipeline.cpp
+         lib/gx/shader.cpp
 diff --git a/include/aurora/dvd.h b/include/aurora/dvd.h
 index a352797..49862c9 100644
 --- a/include/aurora/dvd.h
@@ -31,10 +43,30 @@ index b25732e..3f4c6c3 100644
          __GDWrite(dataPtr[i]);
      }
 diff --git a/include/dolphin/gx/GXAurora.h b/include/dolphin/gx/GXAurora.h
-index 1a312fb..f7081c5 100644
+index 1a312fb..5c50e3b 100644
 --- a/include/dolphin/gx/GXAurora.h
 +++ b/include/dolphin/gx/GXAurora.h
-@@ -173,6 +173,15 @@ void GXCreateFrameBuffer(u32 width, u32 height);
+@@ -2,6 +2,7 @@
+ #define DOLPHIN_GXAURORA_H
+ 
+ #include <dolphin/types.h>
++#include <dolphin/gx/GXEnum.h>
+ 
+ #if __cplusplus
+ extern "C" {
+@@ -96,6 +97,11 @@ extern "C" {
+  */
+ #define GX_AURORA_DRAW_INDEXED 0x0041
+ 
++/**
++ * Frame interpolation tag (u64), see GXAuroraInterpTag().
++ */
++#define GX_AURORA_INTERP_TAG 0x0050
++
+ #define GX2_SET_POLYGON_OFFSET 0x1000
+ 
+ 
+@@ -173,6 +179,48 @@ void GXCreateFrameBuffer(u32 width, u32 height);
   */
  void GXRestoreFrameBuffer(void);
  
@@ -46,6 +78,39 @@ index 1a312fb..f7081c5 100644
 + */
 +typedef const void* (*GXAuroraPhysicalResolver)(u32 physicalAddress);
 +void GXSetAuroraPhysicalResolver(GXAuroraPhysicalResolver resolver);
++
++/*
++ * Frame interpolation
++ *
++ * Renders an extra frame halfway between two game frames. While enabled, each
++ * frame's matrices (position, normal, texture, projection) are blended halfway
++ * toward the matching matrices of the previous frame, and the frame's commands
++ * are kept so that GXAuroraInterpReplay() can render the exact frame after it:
++ *
++ *   ...game draws frame N...
++ *   aurora_end_frame();        // presents the in-between frame
++ *   aurora_begin_frame();
++ *   GXAuroraInterpReplay();    // re-renders frame N unblended
++ *   aurora_end_frame();        // presents frame N
++ *
++ * Matrices are matched between frames by the tag current when they are loaded
++ * (see GXAuroraInterpTag), so tag each object part whose matrices can change
++ * position in the command stream from frame to frame.
++ */
++void GXAuroraInterpSetEnabled(GXBool enabled);
++
++/**
++ * Identifies the matrices loaded until the next tag (e.g. the address of the
++ * object being drawn); 0 means none. Tags are cheap and may repeat within a
++ * frame. No-op while interpolation is disabled.
++ */
++void GXAuroraInterpTag(u64 tag);
++
++/**
++ * Queues the commands of the last frame for rendering, unblended, into the
++ * frame just begun. Returns GX_FALSE if there is nothing to replay.
++ */
++GXBool GXAuroraInterpReplay(void);
 +
  #if __cplusplus
  }
@@ -284,10 +349,18 @@ index 94481a4..5b353c5 100644
    }
    if (length == 0) {
 diff --git a/lib/dolphin/gx/GXAurora.cpp b/lib/dolphin/gx/GXAurora.cpp
-index 85a4285..ad7f2f6 100644
+index 85a4285..618d45e 100644
 --- a/lib/dolphin/gx/GXAurora.cpp
 +++ b/lib/dolphin/gx/GXAurora.cpp
-@@ -97,3 +97,11 @@ void GXRestoreFrameBuffer() {
+@@ -7,6 +7,7 @@
+ #include "../../window.hpp"
+ 
+ #include "../../gx/fifo.hpp"
++#include "../../gx/interp.hpp"
+ 
+ static void GXWriteString(const char* label) {
+   auto length = strlen(label);
+@@ -97,3 +98,23 @@ void GXRestoreFrameBuffer() {
    GX_WRITE_AURORA(GX_AURORA_END_OFFSCREEN);
    aurora::gx::fifo::publish();
  }
@@ -299,6 +372,18 @@ index 85a4285..ad7f2f6 100644
 +extern "C" void GXSetAuroraPhysicalResolver(GXAuroraPhysicalResolver resolver) {
 +  aurora::gx::g_physicalResolver = resolver;
 +}
++
++void GXAuroraInterpSetEnabled(GXBool enabled) { aurora::gx::interp::set_enabled(enabled != GX_FALSE); }
++
++void GXAuroraInterpTag(u64 tag) {
++  if (!aurora::gx::interp::enabled() || aurora::gx::fifo::in_display_list()) {
++    return;
++  }
++  GX_WRITE_AURORA(GX_AURORA_INTERP_TAG);
++  GX_WRITE_U64(tag);
++}
++
++GXBool GXAuroraInterpReplay() { return aurora::gx::interp::replay() ? GX_TRUE : GX_FALSE; }
 diff --git a/lib/dolphin/gx/GXGet.cpp b/lib/dolphin/gx/GXGet.cpp
 index af9d290..16c2b76 100644
 --- a/lib/dolphin/gx/GXGet.cpp
@@ -406,10 +491,18 @@ index b2f791b..f9fded4 100644
      break;
    case GX_TF_CMPR:
 diff --git a/lib/gx/command_processor.cpp b/lib/gx/command_processor.cpp
-index 9c6ffa1..7b15e33 100644
+index 9c6ffa1..3121401 100644
 --- a/lib/gx/command_processor.cpp
 +++ b/lib/gx/command_processor.cpp
-@@ -14,6 +14,7 @@
+@@ -6,6 +6,7 @@
+ #include "dolphin/gd/GDGeometry.h"
+ #include "dolphin/gx/GXAurora.h"
+ #include "gx.hpp"
++#include "interp.hpp"
+ #include "pipeline.hpp"
+ #include "regs.hpp"
+ #include "shader_info.hpp"
+@@ -14,6 +15,7 @@
  #include <tracy/Tracy.hpp>
  
  #include <algorithm>
@@ -417,7 +510,7 @@ index 9c6ffa1..7b15e33 100644
  #include <cmath>
  #include <cstdint>
  #include <span>
-@@ -263,7 +264,7 @@ ProcessResult process(const u8* data, u32 size) noexcept {
+@@ -263,7 +265,7 @@ ProcessResult process(const u8* data, u32 size) noexcept {
        const u32 srcOffset = static_cast<u32>(srcArrayIdx) * array.stride;
        const u32 srcSize = static_cast<u32>(len) * sizeof(u32);
        AURORA_ASSERT(array.data != nullptr, "indexed XF load from unmapped array {}", arrayType);
@@ -426,7 +519,7 @@ index 9c6ffa1..7b15e33 100644
                      "indexed XF load outside array {}: offset={}, size={}, array size={}", arrayType, srcOffset,
                      srcSize, array.size);
        auto const* srcData = static_cast<const u8*>(array.data) + srcOffset;
-@@ -379,6 +380,56 @@ static u32 calc_vtx_size(GXVtxFmt fmt) noexcept {
+@@ -379,6 +381,56 @@ static u32 calc_vtx_size(GXVtxFmt fmt) noexcept {
    return vtxSize;
  }
  
@@ -483,7 +576,7 @@ index 9c6ffa1..7b15e33 100644
  static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Range vertRange, gfx::Range idxRange,
                           u32 numIndices) noexcept {
    auto& state = g_gxState;
-@@ -390,7 +441,13 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
+@@ -390,7 +442,13 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
        continue;
      }
      auto& array = state.arrays[i];
@@ -498,7 +591,7 @@ index 9c6ffa1..7b15e33 100644
        array.cachedRange = gfx::push_storage(static_cast<const uint8_t*>(array.data), array.size);
      }
      immediates.arrayStart[i - GX_VA_POS] = array.cachedRange.offset;
-@@ -503,10 +560,13 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader&
+@@ -503,10 +561,13 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader&
    const bool cleanState = g_gxState.dirty == 0 && fmt == sDrawCache.lastDrawFmt && sDrawCache.lineMode == 0 &&
                            prim != GX_LINES && prim != GX_LINESTRIP && prim != GX_POINTS;
    auto* lastDraw = cleanState ? gfx::get_last_draw_command<DrawData>() : nullptr;
@@ -514,6 +607,64 @@ index 9c6ffa1..7b15e33 100644
    gfx::Range vertRange = gfx::push_verts(vertexData.data(), vertexData.size(), canMerge ? 0 : 4);
  
    // Try to merge with previous draw call
+@@ -692,7 +753,11 @@ void handle_aurora(ByteReader& reader) noexcept {
+   } else if (subCmd == GX_AURORA_LOAD_COPY_DEST) {
+     g_gxState.texCopyDest = reinterpret_cast<const void*>(reader.read<u64>());
+   } else if (subCmd == GX_AURORA_REQUEST_DEPTH_SNAPSHOT) {
+-    gfx::depth_peek::request_snapshot();
++    if (!interp::replaying()) {
++      gfx::depth_peek::request_snapshot();
++    }
++  } else if (subCmd == GX_AURORA_INTERP_TAG) {
++    interp::set_tag(reader.read<u64>());
+   } else if (subCmd == GX_AURORA_BEGIN_OFFSCREEN) {
+     const u32 width = reader.read<u32>();
+     const u32 height = reader.read<u32>();
+diff --git a/lib/gx/fifo.cpp b/lib/gx/fifo.cpp
+index bcaba60..0edcd67 100644
+--- a/lib/gx/fifo.cpp
++++ b/lib/gx/fifo.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include "../thread.hpp"
+ #include "command_processor.hpp"
++#include "interp.hpp"
+ 
+ #include <algorithm>
+ #include <atomic>
+@@ -60,11 +61,14 @@ void process_to(uint64_t target, std::memory_order order) noexcept {
+       const auto start = static_cast<uint32_t>(processed - sStreamBase);
+       const auto size = static_cast<uint32_t>(target - processed);
+       result = process(detail::sBufferData + start, size);
++      if (interp::capturing()) {
++        interp::capture(detail::sBufferData + start, result.bytesProcessed);
++      }
+     }
+     AURORA_ASSERT(result.bytesProcessed > 0 && result.bytesProcessed <= target - processed,
+                   "FIFO processor made invalid progress: processed {} of {} remaining bytes", result.bytesProcessed,
+                   target - processed);
+-    if (result.drawDone) {
++    if (result.drawDone && !interp::replaying()) {
+       dispatch_draw_done();
+     }
+     processed += result.bytesProcessed;
+@@ -139,11 +143,15 @@ void init() {
+ 
+ void shutdown() { stop_worker(); }
+ 
+-void begin_frame() noexcept { sFrameActive = true; }
++void begin_frame() noexcept {
++  sFrameActive = true;
++  interp::begin_frame();
++}
+ 
+ void end_frame() noexcept {
+   sFrameActive = false;
+   clear_draw_cache(); // command_processor
++  interp::end_frame();
+ }
+ 
+ void write_data_grow(const void* data, uint32_t length) {
 diff --git a/lib/gx/gx.hpp b/lib/gx/gx.hpp
 index 9e85609..678fce4 100644
 --- a/lib/gx/gx.hpp
@@ -528,11 +679,392 @@ index 9e85609..678fce4 100644
  };
  inline bool operator==(const AttrArray& lhs, const AttrArray& rhs) {
    return lhs.data == rhs.data && lhs.size == rhs.size && lhs.stride == rhs.stride && lhs.le == rhs.le;
+diff --git a/lib/gx/interp.cpp b/lib/gx/interp.cpp
+new file mode 100644
+index 0000000..13cb8dd
+--- /dev/null
++++ b/lib/gx/interp.cpp
+@@ -0,0 +1,316 @@
++#include "interp.hpp"
++
++#include "fifo.hpp"
++#include "gx.hpp"
++
++#include <absl/container/flat_hash_map.h>
++
++#include <algorithm>
++#include <array>
++#include <atomic>
++#include <cmath>
++#include <cstring>
++#include <vector>
++
++namespace aurora::gx::interp {
++namespace {
++enum class Mode : u8 {
++  Off,    // not interpolating, or between frames
++  Live,   // game frame being processed: record, blend and capture
++  Replay, // replaying the last live frame unblended
++};
++
++enum class Kind : u8 {
++  None,
++  Pos,  // 3x4 position matrix
++  Nrm,  // 3x3 normal matrix
++  Tex,  // 2x4/3x4 texture matrix (regular or post-transform)
++  Proj, // projection parameters
++};
++
++struct Entry {
++  u8 len = 0;
++  std::array<f32, 12> v{};
++};
++using MatrixLog = absl::flat_hash_map<u64, Entry>;
++
++constexpr f32 kBlend = 0.5f;
++
++std::atomic<bool> sEnabled{false};
++Mode sMode = Mode::Off;
++
++std::vector<u8> sCapture;     // commands of the live frame so far
++std::vector<u8> sLastCapture; // commands of the last complete live frame
++GXState sSnapshot;            // processor state at the start of the live frame
++GXState sLastSnapshot;
++bool sHaveLast = false;
++
++MatrixLog sPrevLog; // matrices of the previous live frame
++MatrixLog sCurLog;  // matrices of the live frame so far
++bool sHavePrev = false;
++
++u64 sTag = 0;
++u32 sTagOccurrence = 0;
++u32 sTagIndex = 0;
++std::array<u32, 0x600> sUntaggedCounts{}; // per XF address
++absl::flat_hash_map<u64, u32> sTagCounts;
++
++u64 combine(u64 h, u64 v) noexcept {
++  h ^= v + 0x9E3779B97F4A7C15ull + (h << 6) + (h >> 2);
++  h *= 0xBF58476D1CE4E5B9ull;
++  return h ^ (h >> 31);
++}
++
++u64 next_key(u32 addr) noexcept {
++  if (sTag != 0) {
++    return combine(combine(combine(combine(1, sTag), sTagOccurrence), sTagIndex++), addr);
++  }
++  // Numbered per destination, so e.g. the projections stay matched when the
++  // number of other untagged matrices changes.
++  const u32 slot = addr < sUntaggedCounts.size() ? addr : sUntaggedCounts.size() - 1;
++  return combine(combine(2, sUntaggedCounts[slot]++), addr);
++}
++
++Kind classify(u32 addr, u32 len) noexcept {
++  if (addr < 0x078) {
++    return len == 12 ? Kind::Pos : Kind::None;
++  }
++  if (addr < 0x0F0) {
++    return len == 8 || len == 12 ? Kind::Tex : Kind::None;
++  }
++  if (addr >= 0x400 && addr < 0x45A) {
++    return len == 9 ? Kind::Nrm : Kind::None;
++  }
++  if (addr >= 0x500 && addr < 0x5F0) {
++    return len == 12 ? Kind::Tex : Kind::None;
++  }
++  return Kind::None;
++}
++
++f32 lerp(f32 a, f32 b) noexcept { return a + (b - a) * kBlend; }
++
++// Blends a 3x3 basis (rows of `stride` floats) and keeps each column's length
++// at the blended length, so rotations do not shrink.
++bool blend_basis(const f32* a, const f32* b, f32* out, u32 stride) noexcept {
++  f32 diff = 0.f;
++  f32 norm = 0.f;
++  for (u32 r = 0; r < 3; ++r) {
++    for (u32 c = 0; c < 3; ++c) {
++      const f32 d = b[r * stride + c] - a[r * stride + c];
++      diff += d * d;
++      norm += b[r * stride + c] * b[r * stride + c];
++    }
++  }
++  // Too different to be the same object a frame apart (about 35 degrees).
++  if (diff > 0.36f * norm) {
++    return false;
++  }
++  for (u32 c = 0; c < 3; ++c) {
++    f32 la = 0.f;
++    f32 lb = 0.f;
++    f32 lo = 0.f;
++    for (u32 r = 0; r < 3; ++r) {
++      const f32 va = a[r * stride + c];
++      const f32 vb = b[r * stride + c];
++      const f32 vo = lerp(va, vb);
++      out[r * stride + c] = vo;
++      la += va * va;
++      lb += vb * vb;
++      lo += vo * vo;
++    }
++    if (lo > 1e-12f) {
++      const f32 scale = lerp(std::sqrt(la), std::sqrt(lb)) / std::sqrt(lo);
++      for (u32 r = 0; r < 3; ++r) {
++        out[r * stride + c] *= scale;
++      }
++    }
++  }
++  return true;
++}
++
++bool blend(Kind kind, const f32* a, const f32* b, u32 len, f32* out) noexcept {
++  switch (kind) {
++  case Kind::Pos: {
++    const f32 ta[3] = {a[3], a[7], a[11]};
++    const f32 tb[3] = {b[3], b[7], b[11]};
++    f32 dt = 0.f;
++    f32 la = 0.f;
++    f32 lb = 0.f;
++    for (int i = 0; i < 3; ++i) {
++      dt += (tb[i] - ta[i]) * (tb[i] - ta[i]);
++      la += ta[i] * ta[i];
++      lb += tb[i] * tb[i];
++    }
++    // A jump (camera cut, teleport) rather than motion.
++    const f32 limit = 0.5f * std::sqrt(std::max(la, lb)) + 300.f;
++    if (dt > limit * limit) {
++      return false;
++    }
++    if (!blend_basis(a, b, out, 4)) {
++      return false;
++    }
++    for (int r = 0; r < 3; ++r) {
++      out[r * 4 + 3] = lerp(a[r * 4 + 3], b[r * 4 + 3]);
++    }
++    return true;
++  }
++  case Kind::Nrm:
++    return blend_basis(a, b, out, 3);
++  case Kind::Tex:
++    for (u32 i = 0; i < len; ++i) {
++      // Scrolling textures wrap around; do not blend across a wrap.
++      if (std::abs(b[i] - a[i]) > 0.5f * std::max({1.f, std::abs(a[i]), std::abs(b[i])})) {
++        return false;
++      }
++    }
++    for (u32 i = 0; i < len; ++i) {
++      out[i] = lerp(a[i], b[i]);
++    }
++    return true;
++  case Kind::Proj:
++    if (std::bit_cast<u32>(a[6]) != std::bit_cast<u32>(b[6])) {
++      return false; // projection type changed
++    }
++    for (u32 i = 0; i < 6; ++i) {
++      if (std::abs(b[i] - a[i]) > 0.25f * std::max(std::abs(a[i]), std::abs(b[i]))) {
++        return false;
++      }
++    }
++    for (u32 i = 0; i < 6; ++i) {
++      out[i] = lerp(a[i], b[i]);
++    }
++    out[6] = b[6];
++    return true;
++  default:
++    return false;
++  }
++}
++
++void write_f32(u8* dst, f32 value, std::endian e) noexcept {
++  u32 bits = std::bit_cast<u32>(value);
++  if (e != std::endian::native) {
++    bits = bswap(bits);
++  }
++  std::memcpy(dst, &bits, sizeof(bits));
++}
++
++// Records `cur` and, when the previous frame has the same matrix, writes the
++// blended values to `out`. Returns whether `out` was written.
++bool record_and_blend(Kind kind, u32 addr, const Entry& cur, f32* out) noexcept {
++  const u64 key = next_key(addr);
++  sCurLog.insert_or_assign(key, cur);
++  if (!sHavePrev) {
++    return false;
++  }
++  const auto it = sPrevLog.find(key);
++  if (it == sPrevLog.end() || it->second.len != cur.len) {
++    return false;
++  }
++  if (!blend(kind, it->second.v.data(), cur.v.data(), cur.len, out)) {
++    return false;
++  }
++  return true;
++}
++} // namespace
++
++void set_enabled(bool enabled) noexcept { sEnabled.store(enabled, std::memory_order_release); }
++
++bool enabled() noexcept { return sEnabled.load(std::memory_order_acquire); }
++
++void begin_frame() noexcept {
++  if (!enabled()) {
++    sMode = Mode::Off;
++    sHavePrev = false;
++    sHaveLast = false;
++    return;
++  }
++  sMode = Mode::Live;
++  sSnapshot = g_gxState;
++  sCapture.clear();
++  sCurLog.clear();
++  sTag = 0;
++  sTagOccurrence = 0;
++  sTagIndex = 0;
++  sUntaggedCounts.fill(0);
++  sTagCounts.clear();
++}
++
++void end_frame() noexcept {
++  if (sMode == Mode::Live) {
++    std::swap(sLastCapture, sCapture);
++    std::swap(sLastSnapshot, sSnapshot);
++    std::swap(sPrevLog, sCurLog);
++    sHaveLast = true;
++    sHavePrev = true;
++  }
++  sMode = Mode::Off;
++}
++
++bool replay() noexcept {
++  if (!enabled() || !sHaveLast) {
++    return false;
++  }
++  sMode = Mode::Replay;
++  g_gxState = sLastSnapshot;
++  g_gxState.dirty = DirtyAll;
++  fifo::write_data(sLastCapture.data(), static_cast<u32>(sLastCapture.size()));
++  fifo::publish();
++  return true;
++}
++
++bool capturing() noexcept { return sMode == Mode::Live; }
++
++bool replaying() noexcept { return sMode == Mode::Replay; }
++
++void capture(const u8* data, u32 size) noexcept { sCapture.insert(sCapture.end(), data, data + size); }
++
++void set_tag(u64 tag) noexcept {
++  if (sMode != Mode::Live) {
++    return;
++  }
++  sTag = tag;
++  sTagIndex = 0;
++  sTagOccurrence = tag != 0 ? ++sTagCounts[tag] : 0;
++}
++
++const u8* filter_matrix(u32 addr, const u8* data, u32 len, std::endian e, u8* scratch) noexcept {
++  if (sMode != Mode::Live) {
++    return data;
++  }
++  const Kind kind = classify(addr, len);
++  if (kind == Kind::None) {
++    return data;
++  }
++  Entry cur{.len = static_cast<u8>(len)};
++  for (u32 i = 0; i < len; ++i) {
++    cur.v[i] = read_bits<f32>(data + i * 4, e);
++  }
++  std::array<f32, 12> out;
++  if (!record_and_blend(kind, addr, cur, out.data())) {
++    return data;
++  }
++  for (u32 i = 0; i < len; ++i) {
++    write_f32(scratch + i * 4, out[i], e);
++  }
++  return scratch;
++}
++
++const u8* filter_projection(const u8* data, u8* scratch) noexcept {
++  if (sMode != Mode::Live) {
++    return data;
++  }
++  Entry cur{.len = 7};
++  for (u32 i = 0; i < 7; ++i) {
++    cur.v[i] = read_bits<f32>(data + i * 4);
++  }
++  std::array<f32, 12> out;
++  if (!record_and_blend(Kind::Proj, 0x1020, cur, out.data())) {
++    return data;
++  }
++  for (u32 i = 0; i < 7; ++i) {
++    write_f32(scratch + i * 4, out[i], std::endian::big);
++  }
++  return scratch;
++}
++
++} // namespace aurora::gx::interp
+diff --git a/lib/gx/interp.hpp b/lib/gx/interp.hpp
+new file mode 100644
+index 0000000..a78085d
+--- /dev/null
++++ b/lib/gx/interp.hpp
+@@ -0,0 +1,47 @@
++#pragma once
++
++#include "../internal.hpp"
++
++#include <dolphin/types.h>
++
++#include <bit>
++#include <cstdint>
++
++// Frame interpolation: renders an extra frame between two game frames.
++//
++// While a game frame is processed ("live"), every matrix written to XF memory
++// (position, normal, texture matrices and the projection) is recorded under a
++// key that identifies it across frames, and the value actually used for
++// rendering is blended halfway toward the matching matrix of the previous
++// frame. The live frame therefore shows the moment between the two game
++// frames. The frame's command stream is captured as it is processed; replaying
++// it afterwards (from the same starting state, without blending) renders the
++// exact game frame, which is presented next.
++//
++// Keys come from tags the game sets around its draws (GXAuroraInterpTag, e.g.
++// one per model part): a matrix is identified by the current tag, how many
++// times that tag was set so far this frame, and its position since the tag was
++// set. Matrices loaded without a tag are numbered in frame order instead.
++namespace aurora::gx::interp {
++
++void set_enabled(bool enabled) noexcept;
++bool enabled() noexcept;
++
++// FIFO frame lifecycle (game thread, FIFO idle).
++void begin_frame() noexcept;
++void end_frame() noexcept;
++// Queues the last live frame's commands for replay into the current frame.
++bool replay() noexcept;
++
++// Command processing hooks (FIFO processor thread).
++bool capturing() noexcept;
++bool replaying() noexcept;
++void capture(const u8* data, u32 size) noexcept;
++void set_tag(u64 tag) noexcept;
++// Records a matrix write and returns the data to use (possibly a blended copy
++// in `scratch`, in the same byte order). `addr` is the XF memory address.
++const u8* filter_matrix(u32 addr, const u8* data, u32 len, std::endian e, u8* scratch) noexcept;
++// Same for the projection block (XF registers 0x1020-0x1026, 7 big-endian words).
++const u8* filter_projection(const u8* data, u8* scratch) noexcept;
++
++} // namespace aurora::gx::interp
 diff --git a/lib/gx/regs.cpp b/lib/gx/regs.cpp
-index dcec16d..7f5eb9a 100644
+index dcec16d..bcdf686 100644
 --- a/lib/gx/regs.cpp
 +++ b/lib/gx/regs.cpp
-@@ -6,6 +6,10 @@
+@@ -1,11 +1,16 @@
+ #include "regs.hpp"
+ 
+ #include "gx_fmt.hpp"
++#include "interp.hpp"
+ #include "texture.hpp"
+ 
  #include <bit>
  #include <cmath>
  
@@ -543,7 +1075,7 @@ index dcec16d..7f5eb9a 100644
  namespace aurora::gx::fifo {
  namespace {
  constexpr Module Log{"aurora::gx::fifo"};
-@@ -285,6 +289,10 @@ void bp_tlut_load(u8, u32 value) noexcept {
+@@ -285,6 +290,10 @@ void bp_tlut_load(u8, u32 value) noexcept {
      auto& slot = g_gxState.loadedTluts[idx];
      slot.loadTlut0 = g_gxState.bpRegCache[0x64];
      slot.numEntries = static_cast<u16>(reg_get(value, 10, 10) + 1);
@@ -554,7 +1086,7 @@ index dcec16d..7f5eb9a 100644
    }
  }
  
-@@ -493,6 +501,11 @@ void bp_tex(u8 reg, u32 value) noexcept {
+@@ -493,6 +502,11 @@ void bp_tex(u8 reg, u32 value) noexcept {
      break;
    case 5: // Image3
      slot.image3 = value;
@@ -566,6 +1098,26 @@ index dcec16d..7f5eb9a 100644
      break;
    default:
      break;
+@@ -981,6 +995,10 @@ void handle_cp(u8 addr, u32 value) noexcept {
+ }
+ 
+ bool copy_xf_data(u32 addr, const u8* data, u32 len, std::endian e) noexcept {
++  u8 blended[12 * sizeof(u32)];
++  if (len <= 12) {
++    data = interp::filter_matrix(addr, data, len, e, blended);
++  }
+   if (addr < 0x78) {
+     // Position matrices (0x0000-0x0077)
+     u32 mtxIdx = addr / 12;
+@@ -1151,6 +1169,8 @@ void handle_xf(u16 addr, std::span<const u8> data) noexcept {
+     }
+     // Projection depends only on its XF block, so identical loads can dedupe
+     if (reg == 0x20 && count - i >= 7) {
++      u8 blended[7 * sizeof(u32)];
++      wordData = interp::filter_projection(wordData, blended);
+       if (!xf_block_unchanged(0x20, wordData, 7)) {
+         xf_load_projection(wordData);
+       }
 diff --git a/lib/gx/shader.cpp b/lib/gx/shader.cpp
 index 9dfbdac..58eb57c 100644
 --- a/lib/gx/shader.cpp

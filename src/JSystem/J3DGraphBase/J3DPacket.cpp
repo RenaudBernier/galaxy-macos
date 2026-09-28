@@ -9,6 +9,10 @@
 #include <cstdio>
 #include <mem.h>
 
+#ifdef TARGET_PC
+#include <port/interp.h>
+#endif
+
 J3DError J3DDisplayListObj::newDisplayList(u32 maxSize) {
     mMaxSize = ALIGN_NEXT(maxSize, 0x20);
     mpDisplayList[0] = new (0x20) char[mMaxSize];
@@ -172,6 +176,9 @@ bool J3DMatPacket::isSame(J3DMatPacket* pOther) const {
 }
 
 void J3DMatPacket::draw() {
+#ifdef TARGET_PC
+    PortInterpScope interpScope(this);
+#endif
     mpMaterial->load();
     callDL();
 
@@ -179,6 +186,9 @@ void J3DMatPacket::draw() {
     packet->getShape()->loadPreDrawSetting();
 
     while (packet != NULL) {
+#ifdef TARGET_PC
+        PortInterpScope shapeScope(packet);
+#endif
         if (packet->getDisplayListObj() != NULL) {
             packet->getDisplayListObj()->callDL();
         }
@@ -320,6 +330,9 @@ void J3DShapePacket::prepareDraw() const {
 }
 
 void J3DShapePacket::draw() {
+#ifdef TARGET_PC
+    PortInterpScope interpScope(this);
+#endif
     if (!checkFlag(J3DShpFlag_Hidden) && mpShape != NULL) {
         prepareDraw();
 
@@ -339,6 +352,9 @@ void J3DShapePacket::draw() {
 }
 
 void J3DShapePacket::drawFast() {
+#ifdef TARGET_PC
+    PortInterpScope interpScope(this);
+#endif
     if (!checkFlag(J3DShpFlag_Hidden) && mpShape != NULL) {
         prepareDraw();
 

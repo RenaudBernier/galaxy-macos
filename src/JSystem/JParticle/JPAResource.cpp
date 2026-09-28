@@ -12,6 +12,19 @@
 #include "JSystem/JParticle/JPAParticle.hpp"
 #include "JSystem/JParticle/JPAResourceManager.hpp"
 
+#ifdef TARGET_PC
+#include <port/interp.h>
+
+namespace {
+    // Identifies a particle across frames for frame interpolation: its pool
+    // slot and when it was born (pool slots are reused).
+    const void* particleInterpTag(JPAEmitterWorkData* work, JPABaseParticle* ptcl) {
+        const u32 birth = work->mpEmtr->getAge() - ptcl->getAge();
+        return reinterpret_cast< const void* >(reinterpret_cast< uintptr_t >(ptcl) ^ (static_cast< uintptr_t >(birth & 0xFFFF) << 48));
+    }
+}  // namespace
+#endif
+
 // Size of an entry of the per-resource function tables.
 #ifdef TARGET_PC
 #define JPA_FUNC_PTR_SIZE sizeof(void*)
@@ -776,6 +789,9 @@ void JPAResource::draw(JPAEmitterWorkData* work, JPABaseEmitter* emtr) {
 }
 
 void JPAResource::drawP(JPAEmitterWorkData* work) {
+#ifdef TARGET_PC
+    PortInterpScope interpScope(work->mpEmtr);
+#endif
     work->mpEmtr->clearStatus(0x80);
 
     work->mGlobalPtclScl.x = work->mpEmtr->mGlobalPScl.x * mpBaseShape->getBaseSizeX();
@@ -812,6 +828,9 @@ void JPAResource::drawP(JPAEmitterWorkData* work) {
         JPANode< JPABaseParticle >* node = work->mpEmtr->mAlivePtclBase.getLast();
         for (; node != work->mpEmtr->mAlivePtclBase.getEnd(); node = node->getPrev()) {
             work->mpCurNode = node;
+#ifdef TARGET_PC
+            PortInterpScope particleScope(particleInterpTag(work, node->getObject()));
+#endif
             if (mpDrawParticleFuncList != NULL) {
                 for (int i = mpDrawParticleFuncListNum - 1; i >= 0; i--) {
                     (*mpDrawParticleFuncList[i])(work, node->getObject());
@@ -822,6 +841,9 @@ void JPAResource::drawP(JPAEmitterWorkData* work) {
         JPANode< JPABaseParticle >* node = work->mpEmtr->mAlivePtclBase.getFirst();
         for (; node != work->mpEmtr->mAlivePtclBase.getEnd(); node = node->getNext()) {
             work->mpCurNode = node;
+#ifdef TARGET_PC
+            PortInterpScope particleScope(particleInterpTag(work, node->getObject()));
+#endif
             if (mpDrawParticleFuncList != NULL) {
                 for (int i = mpDrawParticleFuncListNum - 1; i >= 0; i--) {
                     (*mpDrawParticleFuncList[i])(work, node->getObject());
@@ -838,6 +860,9 @@ void JPAResource::drawP(JPAEmitterWorkData* work) {
 }
 
 void JPAResource::drawC(JPAEmitterWorkData* work) {
+#ifdef TARGET_PC
+    PortInterpScope interpScope(work->mpEmtr);
+#endif
     work->mpEmtr->setStatus(0x80);
 
     if (mpChildShape->isScaleInherited()) {
@@ -874,6 +899,9 @@ void JPAResource::drawC(JPAEmitterWorkData* work) {
         JPANode< JPABaseParticle >* node = work->mpEmtr->mAlivePtclChld.getLast();
         for (; node != work->mpEmtr->mAlivePtclChld.getEnd(); node = node->getPrev()) {
             work->mpCurNode = node;
+#ifdef TARGET_PC
+            PortInterpScope particleScope(particleInterpTag(work, node->getObject()));
+#endif
             if (mpDrawParticleChildFuncList != NULL) {
                 for (int i = mpDrawParticleChildFuncListNum - 1; i >= 0; i--) {
                     (*mpDrawParticleChildFuncList[i])(work, node->getObject());
@@ -884,6 +912,9 @@ void JPAResource::drawC(JPAEmitterWorkData* work) {
         JPANode< JPABaseParticle >* node = work->mpEmtr->mAlivePtclChld.getFirst();
         for (; node != work->mpEmtr->mAlivePtclChld.getEnd(); node = node->getNext()) {
             work->mpCurNode = node;
+#ifdef TARGET_PC
+            PortInterpScope particleScope(particleInterpTag(work, node->getObject()));
+#endif
             if (mpDrawParticleChildFuncList != NULL) {
                 for (int i = mpDrawParticleChildFuncListNum - 1; i >= 0; i--) {
                     (*mpDrawParticleChildFuncList[i])(work, node->getObject());

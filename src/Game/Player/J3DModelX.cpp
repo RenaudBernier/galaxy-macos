@@ -14,6 +14,10 @@
 #include <JSystem/JUtility/JUTVideo.hpp>
 #include <revolution/gd.h>
 
+#ifdef TARGET_PC
+#include <port/interp.h>
+#endif
+
 class J3DMtxBuffer2 : public J3DMtxBuffer {
 public:
     void rotationMtx(MtxPtr mtx) {
@@ -187,6 +191,9 @@ void J3DModelX::drawIn(J3DMaterial* material, bool fog, MtxPtr base, J3DModel* m
     }
     J3DMatPacket* matPacket = getMatPacket(material->getIndex());
     J3DShapePacket* packet = model ? model->getShapePacket(material->getShape()->getIndex()) : getShapePacket(material->getShape()->getIndex());
+#ifdef TARGET_PC
+    PortInterpScope interpScope(packet);
+#endif
     j3dSys.setMatPacket(matPacket);
     matPacket->callDL();
 
@@ -467,6 +474,9 @@ J3DModelX::J3DModelX(J3DModelData* data, u32 flags, u32 bufferFlags) : J3DModel(
 }
 
 void J3DModelX::shapePacketDrawFast(J3DShapePacketX* packet) const {
+#ifdef TARGET_PC
+    PortInterpScope interpScope(packet);
+#endif
     if (!(packet->mFlags & 0x10) && packet->getShape()) {
         packet->prepareDraw();
         if (packet->getTexMtxObj()) {

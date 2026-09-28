@@ -38,6 +38,7 @@ Environment options:
 | `SMG_QUIET=1` | hide the game's own debug output |
 | `SMG_LANGUAGE`, `SMG_ASPECT` | system language / 4:3 or 16:9 |
 | `SMG_NOAUDIO=1`, `SMG_VOLUME=0..1` | disable audio / output gain |
+| `SMG_FPS=60` | stay at 60 fps on a 120 Hz display (see below) |
 | `SMG_NAND_DIR=<dir>` | use another save directory (e.g. a scratch one) |
 | `SMG_INPUT_RECORD=<file>` | record the inputs as an `SMG_INPUT_SCRIPT` timeline |
 | `SMG_INPUT_SCRIPT="frame:TOKENS;..."` | scripted inputs (see `src/input.cpp`); `AUTOA` answers "press A" prompts |
@@ -81,6 +82,15 @@ In short:
 ## Status
 
 Playable: boot, title, file select, the prologue (picture book, letter and the
-Bowser attack movie) and gameplay run at 60 fps with sound. Every galaxy and
-hub stage loads and runs its intro. See [STATUS.md](STATUS.md) for the known
-gaps (Miis, HOME Menu, a few GX features).
+Bowser attack movie) and gameplay run with sound. Every galaxy and hub stage
+loads and runs its intro. See [STATUS.md](STATUS.md) for the known gaps (Miis,
+HOME Menu, a few GX features).
+
+## Frame rate
+
+The game logic runs at 60 Hz, as on the Wii. On displays of 100 Hz or more
+(ProMotion MacBook Pros, 120 Hz monitors) the port shows 120 frames per second
+by rendering an extra frame between each pair of game frames: every object,
+particle and 2D element is drawn halfway between its two positions, and the
+two frames are paced by the display's refresh. This adds about half a game
+frame (8 ms) of latency; `SMG_FPS=60` turns it off.

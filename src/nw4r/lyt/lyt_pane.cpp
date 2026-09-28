@@ -7,6 +7,10 @@
 #include "nw4r/math/triangular.h"
 #include <cstdio>
 
+#ifdef TARGET_PC
+#include <port/interp.h>
+#endif
+
 namespace nw4r {
     void ReverseYAxis(math::MTX34* pMtx) {
         pMtx->m[0][1] = -pMtx->m[0][1];
@@ -255,7 +259,12 @@ namespace nw4r {
                 return;
             }
 
-            DrawSelf(rInfo);
+            {
+#ifdef TARGET_PC
+                PortInterpScope interpScope(this);
+#endif
+                DrawSelf(rInfo);
+            }
             for (PaneList::Iterator it = mChildList.GetBeginIter(); it != mChildList.GetEndIter(); ++it) {
                 it->Draw(rInfo);
             }
