@@ -1,102 +1,97 @@
-Petari
-[![Build Status]][actions] ![Progress] [![Discord Badge]][discord]
-=============
+Super Mario Galaxy for macOS
+============================
 
-[Build Status]: https://github.com/SMGCommunity/Petari/actions/workflows/build.yml/badge.svg
-[actions]: https://github.com/SMGCommunity/Petari/actions/workflows/build.yml
+An unofficial native macOS port of Super Mario Galaxy for Apple Silicon Macs,
+built on the [Petari](https://github.com/SMGCommunity/Petari) decompilation.
 
-[Progress]: https://decomp.dev/SMGCommunity/Petari.svg?mode=shield&measure=code&label=Code
+This fork compiles Petari's decompiled game code (Game, JSystem, nw4r) with
+clang and runs it on a host implementation of the Wii SDK. Graphics go through
+[Aurora](https://github.com/encounter/aurora), which reimplements the Wii's GX
+graphics API on Metal; audio, input, saves and disc access are handled by the
+port layer in [`port/`](port). The game code is not emulated: it runs as native
+arm64 code.
 
-[Discord Badge]: https://img.shields.io/discord/727908905392275526?color=%237289DA&logo=discord&logoColor=%23FFFFFF
-[discord]: https://discord.gg/ZxEqyYeZbf
-[progress_link]: https://decomp.dev/SMGCommunity/Petari
+> [!IMPORTANT]
+> This is not the Petari project. Petari is a matching decompilation and is
+> not meant to be a PC port, so please don't ask about this port in the Petari
+> repository or its Discord server.
 
-<!-- markdownlint-disable MD033 -->
-[<img src="https://decomp.dev/SMGCommunity/Petari.svg?w=512&h=256" width="512" height="256" alt="A visual">][progress_link]
-<!-- markdownlint-enable MD033 -->
+**No game data is included.** You need your own copy of the game: a disc image
+of the Korean release, `RMGK01` (the version Petari decompiles). The game reads
+everything from it at runtime.
 
-A work-in-progress decompilation of Super Mario Galaxy 1.
-
-This repository does **not** contain any game assets or assembly whatsoever. An existing copy of the game is required.
-
-This project is **not** meant to be an effort to create a PC Port. Please do not ask for any information on a PC port on this repository or in the Discord server.
-
-> [!NOTE]
-> AI may be used for code cleanup, formatting, documentation, and naming assistance. AI-generated decompilation work is not allowed. Pull requests containing obvious AI-generated decompilation output or other AI slop will be rejected. Contributors should be able to explain and justify any decompilation work they submit. This also applies to all tool-generated code. We want to keep this project as human as possible.
-
-Supported versions:
-
-- `RMGK01`: Rev 0 (Korea)
-
-Dependencies
+Requirements
 ============
 
-Windows
---------
-
-On Windows, it's **highly recommended** to use native tooling. WSL or msys2 are **not** required.  
-When running under WSL, [objdiff](#diffing) is unable to get filesystem notifications for automatic rebuilds.
-
-- Install [Python](https://www.python.org/downloads/) and add it to `%PATH%`.
-  - Also available from the [Windows Store](https://apps.microsoft.com/store/detail/python-311/9NRWMJP3717K).
-- Download [ninja](https://github.com/ninja-build/ninja/releases) and add it to `%PATH%`.
-  - Quick install via pip: `pip install ninja`
-
-macOS
-------
-
-- Install [ninja](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages):
+- A Mac with Apple Silicon.
+- Xcode command line tools (`xcode-select --install`), which also provide
+  Python 3.
+- CMake 3.25 or later, Ninja and SDL3:
 
   ```sh
-  brew install ninja
+  brew install cmake ninja sdl3
   ```
 
-[wibo](https://github.com/decompals/wibo), a minimal 32-bit Windows binary wrapper, will be automatically downloaded and used.
-
-Linux
-------
-
-- Install [ninja](https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages).
-
-[wibo](https://github.com/decompals/wibo), a minimal 32-bit Windows binary wrapper, will be automatically downloaded and used.
+- A disc image of Super Mario Galaxy (Korea, `RMGK01`), in any format Dolphin
+  reads: `.iso`, `.rvz`, `.wbfs`, ...
 
 Building
 ========
 
-- Clone the repository:
+```sh
+git clone https://github.com/RenaudBernier/galaxy-macos.git
+cd galaxy-macos
+cmake -S port -B build/port -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build/port
+```
 
-  ```sh
-  git clone https://github.com/SMGCommunity/Petari.git
-  ```
+The first configure downloads Aurora and its dependencies, so it needs an
+internet connection. Aurora is patched automatically with
+[`port/patches/aurora`](port/patches/aurora). The build produces
+`build/port/Super Mario Galaxy.app`.
 
-- Using [Dolphin Emulator](https://dolphin-emu.org/), extract your game to `orig/GAMEID`.
-![](assets/dolphin-extract.png)
-  - To save space, the only necessary files are the following. Any others can be deleted.
-    - `sys/main.dol`
-- Configure:
-
-  ```sh
-  python configure.py
-  ```
-
-  To use a version other than `GAMEID` (USA), specify it with `--version`.
-- Build:
-
-  ```sh
-  ninja
-  ```
-
-Diffing
+Running
 =======
 
-Once the initial build succeeds, an `objdiff.json` should exist in the project root.
+```sh
+"build/port/Super Mario Galaxy.app/Contents/MacOS/Super Mario Galaxy" /path/to/RMGK01.rvz
+```
 
-Download the latest release from [encounter/objdiff](https://github.com/encounter/objdiff). Under project settings, set `Project directory`. The configuration should be loaded automatically.
+or set `SMG_DISC` to the image path. Saves are stored in
+`~/Library/Application Support/SuperMarioGalaxy`.
 
-Select an object from the left sidebar to begin diffing. Changes to the project will rebuild automatically: changes to source files, headers, `configure.py`, `splits.txt` or `symbols.txt`.
+At the title screen, press A and B together (left click and right click, or
+Space and Left Shift). Menus use the Wii Remote pointer: aim with the mouse and
+click. Controllers are supported too. See [port/README.md](port/README.md) for
+the full controls and the environment options.
 
-![](assets/objdiff.png)
+Status
+======
+
+Boot, the title screen, file select, the prologue and gameplay run at 60 fps
+with sound, and every galaxy loads. An experimental 120 fps mode (interpolated
+frames on 120 Hz displays) is on the
+[`120fps`](https://github.com/RenaudBernier/galaxy-macos/tree/120fps) branch.
+Miis and the HOME Menu are disabled, and later-game content has not been fully
+tested yet. See [port/STATUS.md](port/STATUS.md) for details and known gaps.
+
+The decompilation
+=================
+
+This fork keeps Petari's decompilation and its matching build (`configure.py`
+and `ninja`, which rebuild the original Wii executable). For that build, and to
+contribute to the decompilation itself, see the
+[Petari repository](https://github.com/SMGCommunity/Petari). Most changes made
+for the port are guarded by `TARGET_PC`; the matching build has not been
+re-checked against this fork.
 
 Credits
 =======
-Big thanks to the [doldecomp team](https://github.com/doldecomp/sdk_2009-12-11) for their efforts on bte, [tp](https://github.com/zeldaret/tp) for JSystem, and [ogws](https://github.com/doldecomp/ogws/tree/master), where this repository has sourced code and headers from.
+
+- [Petari](https://github.com/SMGCommunity/Petari) and its contributors, for the
+  decompilation this port is built on, and the projects Petari credits:
+  [doldecomp](https://github.com/doldecomp/sdk_2009-12-11),
+  [tp](https://github.com/zeldaret/tp) and
+  [ogws](https://github.com/doldecomp/ogws).
+- [Aurora](https://github.com/encounter/aurora), for GX on modern graphics APIs,
+  window management and disc image access.
