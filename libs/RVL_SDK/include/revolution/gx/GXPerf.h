@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXPERF_H
 #define GXPERF_H
 
@@ -17,3 +20,4 @@ void GXReadXfRasMetric(u32*, u32*, u32*, u32*);
 #endif
 
 #endif // GXPERF_H
+#endif  // TARGET_PC && PORT_AURORA

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "JSystem/JGeometry/TVec.hpp"
+#include "JSystem/JParticle/JPADynamicsBlock.hpp"  // JPA_DATA_VEC3F
 #include <revolution/types.h>
 
 class JKRHeap;
@@ -123,17 +124,17 @@ public:
 class JPAFieldBlockData {
 public:
     /* 0x00 */ u8 mMagic[4];
-    /* 0x04 */ u32 mSize;
-    /* 0x08 */ u32 mFlags;
-    /* 0x0C */ JGeometry::TVec3< f32 > mPos;
-    /* 0x18 */ JGeometry::TVec3< f32 > mDir;
-    /* 0x24 */ f32 mMag;
-    /* 0x28 */ f32 mMagRndm;
-    /* 0x2C */ f32 mVal1;
-    /* 0x30 */ f32 mFadeInTime;
-    /* 0x34 */ f32 mFadeOutTime;
-    /* 0x38 */ f32 mEnTime;
-    /* 0x3C */ f32 mDisTime;
+    /* 0x04 */ BE(u32) mSize;
+    /* 0x08 */ BE(u32) mFlags;
+    /* 0x0C */ JPA_DATA_VEC3F mPos;
+    /* 0x18 */ JPA_DATA_VEC3F mDir;
+    /* 0x24 */ BE(f32) mMag;
+    /* 0x28 */ BE(f32) mMagRndm;
+    /* 0x2C */ BE(f32) mVal1;
+    /* 0x30 */ BE(f32) mFadeInTime;
+    /* 0x34 */ BE(f32) mFadeOutTime;
+    /* 0x38 */ BE(f32) mEnTime;
+    /* 0x3C */ BE(f32) mDisTime;
     /* 0x40 */ u8 mCycle;
 };
 
@@ -191,10 +192,18 @@ public:
         return mMag;
     }
     void getPosOrig(JGeometry::TVec3< f32 >* pos) {
+#ifdef TARGET_PC
+        pos->set(mpData->mPos.x, mpData->mPos.y, mpData->mPos.z);
+#else
         pos->set(mpData->mPos);
+#endif
     }
     void getDirOrig(JGeometry::TVec3< f32 >* dir) {
+#ifdef TARGET_PC
+        dir->set(mpData->mDir.x, mpData->mDir.y, mpData->mDir.z);
+#else
         dir->set(mpData->mDir);
+#endif
     }
     f32 getMagOrig() {
         return mpData->mMag;

@@ -365,7 +365,11 @@ public:
     /* 0xB0 */ JGeometry::TVec2< f32 > mGlobalPScl;
     /* 0xB8 */ GXColor mGlobalPrmClr;
     /* 0xBC */ GXColor mGlobalEnvClr;
+#ifdef TARGET_PC
+    /* 0xC0 */ uintptr_t mpUserWork;  // holds pointers (SingleEmitter links)
+#else
     /* 0xC0 */ s32 mpUserWork;
+#endif
     /* 0xC4 */ JPARandom mRndm;
     /* 0xC8 */ JPAList< JPABaseParticle > mAlivePtclBase;
     /* 0xD4 */ JPAList< JPABaseParticle > mAlivePtclChld;

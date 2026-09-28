@@ -43,5 +43,10 @@ s16* SpkWave::getWave(s32 wave) const {
 }
 
 WaveData* SpkWave::getWaveData(s32 wave) const {
-    return (WaveData*)((u32)mResource + *(u32*)((u32)mResource + wave * 4 + 8));
+    // PORT: file-reloc (offset table read from the resource)
+#ifdef TARGET_PC
+    return U32_TO_PTR(WaveData*, PTR_TO_U32(mResource) + PortReadBE32(U32_TO_PTR(u8*, PTR_TO_U32(mResource) + wave * 4 + 8)));
+#else
+    return U32_TO_PTR(WaveData*, PTR_TO_U32(mResource) + *U32_TO_PTR(u32*, PTR_TO_U32(mResource) + wave * 4 + 8));
+#endif
 }

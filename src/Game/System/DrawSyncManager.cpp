@@ -78,14 +78,15 @@ void* DrawSyncManager::threadFunc(void* pArg) {
         OSMessage message;
         OSReceiveMessage(&pManager->mQueue, &message, OS_MESSAGE_BLOCK);
 
-        if (reinterpret_cast< u32 >(message) >= 0x80000000) {
+        // PORT: hw (GX FIFO breakpoints) - messages are either FIFO write pointers or draw-sync tokens.
+        if (PTR_TO_U32(message) >= 0x80000000) {
             pManager->mFifo->push(message);
             const bool aborted = pManager->mAborted;
 
             if (pManager->mFifo->getCount() == 2) {
                 GXEnableBreakPt(message);
             }
-        } else if (reinterpret_cast< u32 >(message) < 0x10000) {
+        } else if (PTR_TO_U32(message) < 0x10000) {
             pManager->mFifo->pop();
             const bool aborted = pManager->mAborted;
 

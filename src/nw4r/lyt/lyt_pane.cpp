@@ -27,6 +27,25 @@ namespace nw4r {
             }
         }  // namespace detail
 
+#ifdef TARGET_PC
+        // Not present in the decompilation (only built from resources there);
+        // the defaults follow NW4R: centered, identity SRT, opaque, visible.
+        Pane::Pane() {
+            Init();
+            mBasePosition = 4;
+            memset(mName, 0, sizeof(mName));
+            memset(mUserData, 0, sizeof(mUserData));
+            mTranslate = math::VEC3(0.0f, 0.0f, 0.0f);
+            mRotate = math::VEC3(0.0f, 0.0f, 0.0f);
+            mScale = math::VEC2(1.0f, 1.0f);
+            mSize = Size(0.0f, 0.0f);
+            mAlpha = 255;
+            mGlbAlpha = 255;
+            mFlag = 0;
+            SetVisible(true);
+        }
+#endif
+
         Pane::Pane(const res::Pane* pRes) {
             Init();
 
@@ -343,7 +362,7 @@ namespace nw4r {
                 pMtx = &mGlbMtx;
             }
 
-            GXLoadPosMtxImm(*pMtx, GX_PNMTX0);
+            GXLoadPosMtxImm(static_cast< const f32(*)[4] >(*pMtx), GX_PNMTX0);
             GXSetCurrentMtx(GX_PNMTX0);
         }
 

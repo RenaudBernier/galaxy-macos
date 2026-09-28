@@ -17,6 +17,11 @@
 #include "Game/Util/SceneUtil.hpp"
 #include "Game/Util/SoundUtil.hpp"
 
+#if defined(TARGET_PC) && !defined(DEG_TO_RAD)
+// Supplied by MSL's <cmath> on the Wii build.
+#define DEG_TO_RAD(degrees) (degrees * (3.14159265358979323846f / 180.0f))
+#endif
+
 void MarioSwim_FORCE_MATCH_SDATA2() {
     (void)1.0f;
     (void)0.0f;

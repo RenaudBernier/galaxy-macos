@@ -23,6 +23,12 @@ static RSOExportFuncTable exp_tbl[] = {{"HBMCreateRSO", (u32*)&HBMCreateRSO},
 typedef void (*ProloguePtr)(BOOL);
 
 void RSO::setupRsoHomeButtonMenu() {
+#ifdef TARGET_PC
+    // PORT: hw - the HOME Menu ships as a relocatable module of PowerPC code
+    // (HomeButtonMenuWrapperRSO.rso), which can't run on the host. The menu is
+    // left unavailable; the wrappers below do nothing while it isn't loaded.
+    return;
+#endif
     u32 i;
     RSOObjectHeader* rsoPtr;
     RSOExportFuncTable* pTbl;
@@ -54,37 +60,73 @@ void RSO::setupRsoHomeButtonMenu() {
             for (i = 0; i < ARRAY_SIZE(exp_tbl); i++) {
                 pTbl = &exp_tbl[i];
                 RSOFindExportSymbolAddr(rsoPtr, pTbl->symbol_name);
-                *(pTbl->symbol_ptr) = (u32)RSOFindExportSymbolAddr(rsoPtr, pTbl->symbol_name);
+                // PORT: hw (the HOME Menu RSO contains PowerPC code; the host needs a native replacement)
+                *(pTbl->symbol_ptr) = PTR_TO_U32(RSOFindExportSymbolAddr(rsoPtr, pTbl->symbol_name));
             }
         }
     }
 }
 
 void RSO::HBMCreate(const HBMDataInfo* pHBInfo) {
+#ifdef TARGET_PC
+    if (HBMCreateRSO == nullptr) {
+        return;
+    }
+#endif
     (*HBMCreateRSO)(pHBInfo);
 }
 
 void RSO::HBMInit() {
+#ifdef TARGET_PC
+    if (HBMInitRSO == nullptr) {
+        return;
+    }
+#endif
     (*HBMInitRSO)();
 }
 
 void RSO::HBMCalc(const HBMControllerData* pController) {
+#ifdef TARGET_PC
+    if (HBMCalcRSO == nullptr) {
+        return;
+    }
+#endif
     (*HBMCalcRSO)(pController);
 }
 
 void RSO::HBMDraw() {
+#ifdef TARGET_PC
+    if (HBMDrawRSO == nullptr) {
+        return;
+    }
+#endif
     (*HBMDrawRSO)();
 }
 
 HBMSelectBtnNum RSO::HBMGetSelectBtnNum() {
+#ifdef TARGET_PC
+    if (HBMGetSelectBtnNumRSO == nullptr) {
+        return HBM_SELECT_NULL;
+    }
+#endif
     return (*HBMGetSelectBtnNumRSO)();
 }
 
 void RSO::HBMSetAdjustFlag(int flag) {
+#ifdef TARGET_PC
+    if (HBMSetAdjustFlagRSO == nullptr) {
+        return;
+    }
+#endif
     (*HBMSetAdjustFlagRSO)(flag);
 }
 
 void RSO::HBMStartBlackOut() {
+#ifdef TARGET_PC
+    if (HBMStartBlackOutRSO == nullptr) {
+        return;
+    }
+#endif
     (*HBMStartBlackOutRSO)();
 }
 

@@ -634,7 +634,7 @@ namespace nw4r {
             bool mbDisable;
         };
 
-#ifdef __MWERKS__
+#if defined(__MWERKS__) || defined(TARGET_PC)  // the node offset must be the real one
         typedef ut::LinkList< AnimationLink, offsetof(AnimationLink, mLink) > AnimationList;
 #else
         typedef ut::LinkList< AnimationLink, 0 > AnimationList;

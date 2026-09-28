@@ -11,11 +11,13 @@ struct AudChordData {
     /* 0x05 */ u8 mAddNote[3];
 };
 
+// Scale data inside the chord table resource; the pointers are 4-byte
+// offsets in the file, relocated in place.
 struct AudScaleData {
     void initScaleData(u32 base) NO_INLINE;
 
-    /* 0x00 */ u8* up;
-    /* 0x04 */ u8* down;
+    /* 0x00 */ PTR32(u8) up;
+    /* 0x04 */ PTR32(u8) down;
 };
 
 class AudChordTable {
@@ -28,8 +30,9 @@ public:
     /* 0x00 */ bool mLoaded;
     /* 0x04 */ int mChordCount;
     /* 0x08 */ int mScaleCount;
-    /* 0x0C */ AudChordData** mChordPtr;
-    /* 0x10 */ AudScaleData** mScalePtr;
+    // Pointer tables with 4-byte slots inside the resource.
+    /* 0x0C */ PTR32(AudChordData)* mChordPtr;
+    /* 0x10 */ PTR32(AudScaleData)* mScalePtr;
 };
 
 class AudChordInfo : public JASGlobalInstance< AudChordInfo > {

@@ -21,6 +21,13 @@ namespace JGeometry {
         rDest[2] = -rSrc[2];
     }
 
+#elif defined(TARGET_PC)
+    inline void negateInternal(const f32* rSrc, f32* rDest) {
+        const f32 x = -rSrc[0], y = -rSrc[1];
+        rDest[0] = x;
+        rDest[1] = y;
+        rDest[2] = -rSrc[2];
+    }
 #else
     inline void negateInternal(const f32* rSrc, f32* rDest);
 #endif
@@ -40,6 +47,14 @@ namespace JGeometry {
         }
     }
 
+#elif defined(TARGET_PC)
+    // Mirrors the asm above, including z = vec2.z - vec1.z.
+    inline static void subInternal(const f32* vec1, const f32* vec2, f32* dst) {
+        const f32 x = vec1[0] - vec2[0], y = vec1[1] - vec2[1];
+        dst[0] = x;
+        dst[1] = y;
+        dst[2] = vec2[2] - vec1[2];
+    }
 #else
     static void subInternal(const f32* vec1, const f32* vec2, f32* dst);
 #endif
@@ -57,6 +72,13 @@ namespace JGeometry {
         dst[2] = vec1[2] * vec2[2];
     }
 
+#elif defined(TARGET_PC)
+    inline void mulInternal(const f32* vec1, const f32* vec2, f32* dst) {
+        const f32 x = vec1[0] * vec2[0], y = vec1[1] * vec2[1];
+        dst[0] = x;
+        dst[1] = y;
+        dst[2] = vec1[2] * vec2[2];
+    }
 #else
     void mulInternal(const f32* vec1, const f32* vec2, f32* dst);
 #endif
@@ -257,7 +279,7 @@ namespace JGeometry {
     };
 
     template <>
-    TVec2< f32 >::TVec2() {
+    inline TVec2< f32 >::TVec2() {
     }
 
     template < typename T >
@@ -275,7 +297,9 @@ namespace JGeometry {
             z = _z;
         }
 
+#ifndef TARGET_PC
         TVec3< T >(int x, int y, int Z);
+#endif
 
         inline TVec3(T val) {
             x = val;
@@ -343,6 +367,12 @@ namespace JGeometry {
             ;
         }
 
+#elif defined(TARGET_PC)
+        TVec3(const Vec& vec) {
+            x = vec.x;
+            y = vec.y;
+            z = vec.z;
+        }
 #else
         TVec3(const Vec& vec);
 #endif
@@ -364,6 +394,12 @@ namespace JGeometry {
             ;
         }
 
+#elif defined(TARGET_PC)
+        TVec3(const TVec3< f32 >& vec) {
+            x = vec.x;
+            y = vec.y;
+            z = vec.z;
+        }
 #else
         TVec3(const TVec3< f32 >& vec);
 #endif
@@ -422,6 +458,10 @@ namespace JGeometry {
             stfs b_x, 8(v_b)
             }
             ;
+#else
+            x = vec.x;
+            y = vec.y;
+            z = vec.z;
 #endif
         }
 
@@ -639,6 +679,12 @@ namespace JGeometry {
             ;
         }
 
+#elif defined(TARGET_PC)
+        inline void setPSZeroVec() {
+            x = gZeroVec.x;
+            y = gZeroVec.y;
+            z = gZeroVec.z;
+        }
 #else
         void setPSZeroVec();
 #endif
@@ -666,6 +712,9 @@ namespace JGeometry {
             }
 
             return _fp1;
+#else
+            // Same evaluation order as the paired-single sequence above.
+            return __builtin_fmaf(x, rOther.x, y * rOther.y) + z * rOther.z;
 #endif
         }
 
@@ -807,6 +856,11 @@ namespace JGeometry {
 
             return sqdist;
         };
+#elif defined(TARGET_PC)
+        f32 squared(const TVec3& rB) const {
+            const f32 dx = x - rB.x, dy = y - rB.y, dz = z - rB.z;
+            return __builtin_fmaf(dx, dx, dy * dy) + dz * dz;
+        }
 #else
         f32 squared(const TVec3& rB) const;
 #endif
@@ -1127,7 +1181,7 @@ namespace JGeometry {
             f32 crossPart = dir.length();
 
             if (crossPart <= JGeometry::TUtil< f32 >::epsilon()) {
-                set< f32 >(0.0f, 0.0f, 0.0f, 1.0f);
+                this->template set< f32 >(0.0f, 0.0f, 0.0f, 1.0f);
             } else {
                 f32 dotPart = rA.dot(rB);
                 f32 halfAngle = ratio * (JMAATan2(crossPart, dotPart) * 0.5f);

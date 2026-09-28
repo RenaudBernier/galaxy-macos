@@ -98,7 +98,12 @@ s32 JKRDvdFile::sync(void) {
 }
 
 void JKRDvdFile::doneProcess(s32 id, DVDFileInfo* fileInfo) {
+#ifdef TARGET_PC
+    // mDvdFile follows mFileInfo; DVDFileInfo is larger than the Wii's 0x3C.
+    JKRDvdFile* dvdFile = *(JKRDvdFile**)((u8*)fileInfo + sizeof(DVDFileInfo));
+#else
     JKRDvdFile* dvdFile = *(JKRDvdFile**)((u8*)fileInfo + 0x3c);
+#endif
     OSSendMessage(&dvdFile->mMessageQueue2, (OSMessage)(intptr_t)id, OS_MESSAGE_NOBLOCK);
 }
 

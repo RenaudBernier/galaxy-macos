@@ -24,15 +24,20 @@ public:
         mSeqCursor = (u8*)param_1;
     }
 
+    // BMS sequence data is big-endian.
     u32 get24(u32 param_0) const {
+#ifdef TARGET_PC
+        return PortReadBE32(mSeqBuff + param_0 - 1) & 0xffffff;
+#else
         return (*(u32*)(mSeqBuff + param_0 - 1)) & 0xffffff;
+#endif
     }
 
     u32* getBase() {
         return (u32*)mSeqBuff;
     }
     u32 getOffset() {
-        return (u32)mSeqCursor - (u32)mSeqBuff;
+        return (u32)(mSeqCursor - mSeqBuff);
     }
     u8* getAddr(u32 param_0) {
         return mSeqBuff + param_0;
@@ -41,10 +46,18 @@ public:
         return *(mSeqBuff + param_0);
     }
     u16 get16(u32 param_0) const {
+#ifdef TARGET_PC
+        return PortReadBE16(mSeqBuff + param_0);
+#else
         return *(u16*)(mSeqBuff + param_0);
+#endif
     }
     u32 get32(u32 param_0) const {
+#ifdef TARGET_PC
+        return PortReadBE32(mSeqBuff + param_0);
+#else
         return *(u32*)(mSeqBuff + param_0);
+#endif
     }
     u8* getCur() {
         return mSeqCursor;
@@ -55,6 +68,10 @@ public:
     u32 read16() {
 #ifdef __MWERKS__
         return *((u16*)mSeqCursor)++;
+#elif defined(TARGET_PC)
+        u16 value = PortReadBE16(mSeqCursor);
+        mSeqCursor += 2;
+        return value;
 #else
         u16* value = (u16*)mSeqCursor;
         mSeqCursor += 2;
@@ -65,6 +82,10 @@ public:
         mSeqCursor--;
 #ifdef __MWERKS__
         return (*((u32*)mSeqCursor)++) & 0x00ffffff;
+#elif defined(TARGET_PC)
+        u32 value = PortReadBE32(mSeqCursor);
+        mSeqCursor += 4;
+        return value & 0x00ffffff;
 #else
         u32* value = (u32*)mSeqCursor;
         mSeqCursor += 4;

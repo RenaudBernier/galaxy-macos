@@ -46,148 +46,157 @@ enum J3DModelLoaderFlagTypes {
     J3DMLF_Material_Color_AmbientOn = 0x80000000
 };
 
+// Model file blocks are overlaid on (big-endian) BMD/BDL/BMT data. Offset
+// fields hold block-relative offsets (void* on the Wii, where they are 4 bytes
+// wide; a 32-bit big-endian value on the host).
+#ifdef TARGET_PC
+typedef BE(u32) J3DFileOffset;
+#else
+typedef void* J3DFileOffset;
+#endif
+
 struct J3DModelBlock {
-    u32 mBlockType;
-    u32 mBlockSize;
+    BE(u32) mBlockType;
+    BE(u32) mBlockSize;
 };
 
 struct J3DModelFileData {
-    u32 mMagic1;
-    u32 mMagic2;
+    BE(u32) mMagic1;
+    BE(u32) mMagic2;
     u8 _8[4];
-    u32 mBlockNum;
+    BE(u32) mBlockNum;
     u8 _10[0x10];
     J3DModelBlock mBlocks[1];
 };
 
 struct J3DModelInfoBlock : public J3DModelBlock {
-    u16 mFlags;
-    u32 mPacketNum;
-    u32 mVtxNum;
-    void* mpHierarchy;
+    BE(u16) mFlags;
+    BE(u32) mPacketNum;
+    BE(u32) mVtxNum;
+    J3DFileOffset mpHierarchy;
 };
 
 struct J3DVertexBlock : public J3DModelBlock {
-    void* mpVtxAttrFmtList;
-    void* mpVtxPosArray;
-    void* mpVtxNrmArray;
-    void* mpVtxNBTArray;
-    void* mpVtxColorArray[2];
-    void* mpVtxTexCoordArray[8];
+    J3DFileOffset mpVtxAttrFmtList;
+    J3DFileOffset mpVtxPosArray;
+    J3DFileOffset mpVtxNrmArray;
+    J3DFileOffset mpVtxNBTArray;
+    J3DFileOffset mpVtxColorArray[2];
+    J3DFileOffset mpVtxTexCoordArray[8];
 };
 
 struct J3DEnvelopeBlock : public J3DModelBlock {
-    u16 mWEvlpMtxNum;
-    void* mpWEvlpMixMtxNum;
-    void* mpWEvlpMixIndex;
-    void* mpWEvlpMixWeight;
-    void* mpInvJointMtx;
+    BE(u16) mWEvlpMtxNum;
+    J3DFileOffset mpWEvlpMixMtxNum;
+    J3DFileOffset mpWEvlpMixIndex;
+    J3DFileOffset mpWEvlpMixWeight;
+    J3DFileOffset mpInvJointMtx;
 };
 
 struct J3DDrawBlock : public J3DModelBlock {
-    u16 mMtxNum;
-    void* mpDrawMtxFlag;
-    void* mpDrawMtxIndex;
+    BE(u16) mMtxNum;
+    J3DFileOffset mpDrawMtxFlag;
+    J3DFileOffset mpDrawMtxIndex;
 };
 
 struct J3DJointBlock : public J3DModelBlock {
-    /* 0x08 */ u16 mJointNum;
-    /* 0x0C */ void* mpJointInitData;
-    /* 0x10 */ void* mpIndexTable;
-    /* 0x14 */ void* mpNameTable;
+    /* 0x08 */ BE(u16) mJointNum;
+    /* 0x0C */ J3DFileOffset mpJointInitData;
+    /* 0x10 */ J3DFileOffset mpIndexTable;
+    /* 0x14 */ J3DFileOffset mpNameTable;
 };  // size 0x18
 
 struct J3DMaterialBlock : public J3DModelBlock {
-    u16 mMaterialNum;
-    void* mpMaterialInitData;
-    void* mpMaterialID;
-    void* mpNameTable;
-    void* mpIndInitData;
-    void* mpCullMode;
-    void* mpMatColor;
-    void* mpColorChanNum;
-    void* mpColorChanInfo;
-    void* mpAmbColor;
-    void* mpLightInfo;
-    void* mpTexGenNum;
-    void* mpTexCoordInfo;
-    void* mpTexCoord2Info;
-    void* mpTexMtxInfo;
-    void* field_0x44;
-    void* mpTexNo;
-    void* mpTevOrderInfo;
-    void* mpTevColor;
-    void* mpTevKColor;
-    void* mpTevStageNum;
-    void* mpTevStageInfo;
-    void* mpTevSwapModeInfo;
-    void* mpTevSwapModeTableInfo;
-    void* mpFogInfo;
-    void* mpAlphaCompInfo;
-    void* mpBlendInfo;
-    void* mpZModeInfo;
-    void* mpZCompLoc;
-    void* mpDither;
-    void* mpNBTScaleInfo;
+    BE(u16) mMaterialNum;
+    J3DFileOffset mpMaterialInitData;
+    J3DFileOffset mpMaterialID;
+    J3DFileOffset mpNameTable;
+    J3DFileOffset mpIndInitData;
+    J3DFileOffset mpCullMode;
+    J3DFileOffset mpMatColor;
+    J3DFileOffset mpColorChanNum;
+    J3DFileOffset mpColorChanInfo;
+    J3DFileOffset mpAmbColor;
+    J3DFileOffset mpLightInfo;
+    J3DFileOffset mpTexGenNum;
+    J3DFileOffset mpTexCoordInfo;
+    J3DFileOffset mpTexCoord2Info;
+    J3DFileOffset mpTexMtxInfo;
+    J3DFileOffset field_0x44;
+    J3DFileOffset mpTexNo;
+    J3DFileOffset mpTevOrderInfo;
+    J3DFileOffset mpTevColor;
+    J3DFileOffset mpTevKColor;
+    J3DFileOffset mpTevStageNum;
+    J3DFileOffset mpTevStageInfo;
+    J3DFileOffset mpTevSwapModeInfo;
+    J3DFileOffset mpTevSwapModeTableInfo;
+    J3DFileOffset mpFogInfo;
+    J3DFileOffset mpAlphaCompInfo;
+    J3DFileOffset mpBlendInfo;
+    J3DFileOffset mpZModeInfo;
+    J3DFileOffset mpZCompLoc;
+    J3DFileOffset mpDither;
+    J3DFileOffset mpNBTScaleInfo;
 };
 
 struct J3DMaterialBlock_v21 : public J3DModelBlock {
-    u16 mMaterialNum;
-    void* mpMaterialInitData;
-    void* mpMaterialID;
-    void* mpNameTable;
-    void* mpCullMode;
-    void* mpMatColor;
-    void* mpColorChanNum;
-    void* mpColorChanInfo;
-    void* mpTexGenNum;
-    void* mpTexCoordInfo;
-    void* mpTexCoord2Info;
-    void* mpTexMtxInfo;
-    void* field_0x38;
-    void* mpTexNo;
-    void* mpTevOrderInfo;
-    void* mpTevColor;
-    void* mpTevKColor;
-    void* mpTevStageNum;
-    void* mpTevStageInfo;
-    void* mpTevSwapModeInfo;
-    void* mpTevSwapModeTableInfo;
-    void* mpFogInfo;
-    void* mpAlphaCompInfo;
-    void* mpBlendInfo;
-    void* mpZModeInfo;
-    void* mpZCompLoc;
-    void* mpDither;
-    void* mpNBTScaleInfo;
+    BE(u16) mMaterialNum;
+    J3DFileOffset mpMaterialInitData;
+    J3DFileOffset mpMaterialID;
+    J3DFileOffset mpNameTable;
+    J3DFileOffset mpCullMode;
+    J3DFileOffset mpMatColor;
+    J3DFileOffset mpColorChanNum;
+    J3DFileOffset mpColorChanInfo;
+    J3DFileOffset mpTexGenNum;
+    J3DFileOffset mpTexCoordInfo;
+    J3DFileOffset mpTexCoord2Info;
+    J3DFileOffset mpTexMtxInfo;
+    J3DFileOffset field_0x38;
+    J3DFileOffset mpTexNo;
+    J3DFileOffset mpTevOrderInfo;
+    J3DFileOffset mpTevColor;
+    J3DFileOffset mpTevKColor;
+    J3DFileOffset mpTevStageNum;
+    J3DFileOffset mpTevStageInfo;
+    J3DFileOffset mpTevSwapModeInfo;
+    J3DFileOffset mpTevSwapModeTableInfo;
+    J3DFileOffset mpFogInfo;
+    J3DFileOffset mpAlphaCompInfo;
+    J3DFileOffset mpBlendInfo;
+    J3DFileOffset mpZModeInfo;
+    J3DFileOffset mpZCompLoc;
+    J3DFileOffset mpDither;
+    J3DFileOffset mpNBTScaleInfo;
 };
 
 struct J3DMaterialDLBlock : public J3DModelBlock {
-    u16 mMaterialNum;
-    void* mpDisplayListInit;
-    void* mpPatchingInfo;
-    void* mpCurrentMtxInfo;
-    void* mpMaterialMode;
-    void* _1C;
-    void* mpNameTable;
+    BE(u16) mMaterialNum;
+    J3DFileOffset mpDisplayListInit;
+    J3DFileOffset mpPatchingInfo;
+    J3DFileOffset mpCurrentMtxInfo;
+    J3DFileOffset mpMaterialMode;
+    J3DFileOffset _1C;
+    J3DFileOffset mpNameTable;
 };
 
 struct J3DShapeBlock : public J3DModelBlock {
-    u16 mShapeNum;          // 0x00
-    void* mpShapeInitData;  // 0x04
-    void* mpIndexTable;     // 0x08
-    void* mpNameTable;      // 0x0C
-    void* mpVtxDescList;
-    void* mpMtxTable;
-    void* mpDisplayListData;
-    void* mpMtxInitData;
-    void* mpDrawInitData;
+    BE(u16) mShapeNum;               // 0x00
+    J3DFileOffset mpShapeInitData;   // 0x04
+    J3DFileOffset mpIndexTable;      // 0x08
+    J3DFileOffset mpNameTable;       // 0x0C
+    J3DFileOffset mpVtxDescList;
+    J3DFileOffset mpMtxTable;
+    J3DFileOffset mpDisplayListData;
+    J3DFileOffset mpMtxInitData;
+    J3DFileOffset mpDrawInitData;
 };
 
 struct J3DTextureBlock : public J3DModelBlock {
-    u16 mTextureNum;
-    void* mpTextureRes;
-    void* mpNameTable;
+    BE(u16) mTextureNum;
+    J3DFileOffset mpTextureRes;
+    J3DFileOffset mpNameTable;
 };
 
 class J3DModelLoader {
@@ -255,6 +264,11 @@ public:
     u8 field_0x18;
     u8 field_0x19;
     u16 mEnvelopeSize;  // 0x1A
+#ifdef TARGET_PC
+    // The file's CPU-side arrays (vertices, envelopes, ...) were already
+    // converted to host byte order by an earlier load of the same data.
+    bool mHostOrder;
+#endif
 };
 
 class J3DModelLoader_v26 : public J3DModelLoader {

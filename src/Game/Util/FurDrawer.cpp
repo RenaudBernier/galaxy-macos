@@ -271,8 +271,14 @@ void FurDrawer::createFurMap() {
     pPixels = reinterpret_cast< u16* >(mFurTexture->mImage);
     count = height * width;
 
+#ifdef TARGET_PC
+    // GX texel data is big-endian (the GPU layer decodes it as such).
+#define FUR_TEXEL(v) __builtin_bswap16(v)
+#else
+#define FUR_TEXEL(v) (v)
+#endif
     for (u32 i = 0; i < count; i++) {
-        pPixels[i] = 255;
+        pPixels[i] = FUR_TEXEL(u16(255));
     }
 
     for (u32 type = 0; type < 4; type++) {
@@ -290,7 +296,7 @@ void FurDrawer::createFurMap() {
                 x = s32(width) - 1;
             }
 
-            pPixels[x + width * y] = (u16(255.0f * mThickness[type]) << 8) | u16(255 - mLengthMap[type]);
+            pPixels[x + width * y] = FUR_TEXEL(u16((u16(255.0f * mThickness[type]) << 8) | u16(255 - mLengthMap[type])));
         }
     }
 

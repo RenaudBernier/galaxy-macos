@@ -188,7 +188,11 @@ void JUTException::panic_f(const char* file, int line, const char* format, ...) 
     va_list args;
     va_start(args, format);
     panic_f_va(file, line, format, args);
+#ifdef TARGET_PC
+    va_end(args);
+#else
     va_end();
+#endif
 }
 
 #define __signbit(x) ((*reinterpret_cast< unsigned char* >(&(x))) & 0x80)
@@ -236,7 +240,7 @@ bool JUTException::searchPartialModule(u32 address, u32* module_id, u32* section
 
     OSModuleInfo* module = *(OSModuleInfo**)0x800030C8;
     while (module) {
-        OSSectionInfo* section = reinterpret_cast< OSSectionInfo* >(module->sectionInfoOffset);
+        OSSectionInfo* section = U32_TO_PTR(OSSectionInfo*, module->sectionInfoOffset);
         for (u32 i = 0; i < module->numSections; section = section + 1, i++) {
             if (section->size) {
                 u32 addr = ALIGN_PREV(section->offset, 2);
@@ -669,8 +673,8 @@ void JUTException::createFB() {
     void* end = OSGetArenaHi();
     u32 size = (static_cast< u16 >(ALIGN_NEXT(renderMode->fbWidth, 16)) * renderMode->xfbHeight) * 2;
 
-    void* begin = reinterpret_cast< void* >(ALIGN_PREV(reinterpret_cast< u32 >(end) - size, 32));
-    void* object = reinterpret_cast< void* >(ALIGN_PREV(reinterpret_cast< u32 >(begin) - sizeof(JUTExternalFB), 32));
+    void* begin = U32_TO_PTR(void*, ALIGN_PREV(PTR_TO_U32(end) - size, 32));
+    void* object = U32_TO_PTR(void*, ALIGN_PREV(PTR_TO_U32(begin) - sizeof(JUTExternalFB), 32));
     new (object) JUTExternalFB(renderMode, GX_GM_1_7, begin, size);
 
     mDirectPrint->changeFrameBuffer(begin, renderMode->fbWidth, renderMode->efbHeight);

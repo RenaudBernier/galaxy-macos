@@ -26,12 +26,22 @@
 struct MaterialEffectEntry {
     union FlagWord {
         u32 mWord;
+#ifdef TARGET_PC
+        // mByte0 is the most significant byte of mWord (big-endian layout).
+        struct {
+            u8 mByte3;
+            u8 mByte2;
+            u8 mByte1;
+            u8 mByte0;
+        };
+#else
         struct {
             u8 mByte0;
             u8 mByte1;
             u8 mByte2;
             u8 mByte3;
         };
+#endif
     };
 
     /* 0x00 */ const char* mName;
@@ -44,12 +54,22 @@ struct MaterialEffectEntry {
 struct SmokeEffectEntry {
     union FlagWord {
         u32 mWord;
+#ifdef TARGET_PC
+        // mByte0 is the most significant byte of mWord (big-endian layout).
+        struct {
+            u8 mByte3;
+            u8 mByte2;
+            u8 mByte1;
+            u8 mByte0;
+        };
+#else
         struct {
             u8 mByte0;
             u8 mByte1;
             u8 mByte2;
             u8 mByte3;
         };
+#endif
     };
 
     /* 0x00 */ const char* mName;
@@ -202,7 +222,7 @@ void MarioActor::initMaterialEffect() {
     _BA4 = new HashSortTable(entryCount);
     entry = cMaterialEffectTable;
     for (int i = 0; i < entryCount; i++) {
-        _BA4->add(cMaterialEffectTable[i].mName, reinterpret_cast< u32 >(&cMaterialEffectTable[i]), false);
+        _BA4->add(cMaterialEffectTable[i].mName, PTR_TO_U32(&cMaterialEffectTable[i]), false);
     }
 
     _BA4->sort();
@@ -307,8 +327,9 @@ s32 MarioActor::getFloorMaterialIndex(u32 flags) const {
 }
 
 MultiEmitter* MarioActor::playMaterialEffect(const char* pName) {
-    MaterialEffectEntry* entry = nullptr;
-    _BA4->search(pName, reinterpret_cast< u32* >(&entry));
+    u32 entryAddr = 0;
+    _BA4->search(pName, &entryAddr);
+    MaterialEffectEntry* entry = U32_TO_PTR(MaterialEffectEntry*, entryAddr);
 
     const s32 materialIndex = getFloorMaterialIndex(entry->mFlag.mByte0);
     if (materialIndex == -1) {
@@ -353,8 +374,9 @@ MultiEmitter* MarioActor::playMaterialEffect(const char* pName) {
 }
 
 void MarioActor::stopMaterialEffect(const char* pName) {
-    MaterialEffectEntry* entry = nullptr;
-    _BA4->search(pName, reinterpret_cast< u32* >(&entry));
+    u32 entryAddr = 0;
+    _BA4->search(pName, &entryAddr);
+    MaterialEffectEntry* entry = U32_TO_PTR(MaterialEffectEntry*, entryAddr);
 
     if (entry->mCurrent != nullptr) {
         MR::deleteEffect(this, entry->mCurrent);

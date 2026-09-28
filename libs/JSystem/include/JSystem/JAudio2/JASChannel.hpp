@@ -73,11 +73,20 @@ public:
 
     union MixConfig {
         u16 whole;
+#ifdef TARGET_PC
+        // whole = upper:8 lower0:4 lower1:4 (most significant first).
+        struct {
+            u8 lower1 : 4;
+            u8 lower0 : 4;
+            u8 upper : 8;
+        };
+#else
         struct {
             u8 upper : 8;
             u8 lower0 : 4;
             u8 lower1 : 4;
         };
+#endif
     };
 
     JASChannel(Callback, void*);

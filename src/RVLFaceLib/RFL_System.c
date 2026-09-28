@@ -1,7 +1,11 @@
 #include "RVLFaceLibInternal.h"
-#include <cstdio>
+#include <stdio.h>
 #include <revolution/mem.h>
 #include <revolution/types.h>
+
+#ifdef TARGET_PC
+void PortPreemptPoint(void);
+#endif
 
 #define RFL_SYSTEM_HEAP_SIZE 0x24800
 #define RFL_WORK_SIZE 0x4B000
@@ -103,7 +107,7 @@ RFLErrcode RFLInitResAsync(void* workBuffer, void* resBuffer, u32 resSize, BOOL 
     return errcode;
 }
 
-static RFLErrcode RFLInitRes(void* workBuffer, void* resBuffer, u32 resSize, BOOL deluxeTex) {
+RFL_STATIC RFLErrcode RFLInitRes(void* workBuffer, void* resBuffer, u32 resSize, BOOL deluxeTex) {
     RFLInitResAsync(workBuffer, resBuffer, resSize, deluxeTex);
     return RFLWaitAsync();
 }
@@ -145,7 +149,7 @@ static void bootloadDB2Res_(void) {
     }
 }
 
-static RFLErrcode RFLiBootLoadAsync(void) {
+RFL_STATIC RFLErrcode RFLiBootLoadAsync(void) {
     return RFLiBootLoadDatabaseAsync(bootloadDB2Res_);
 }
 
@@ -157,7 +161,7 @@ static void* allocal_(u32 size, s32 align) {
     return MEMAllocFromExpHeapEx(RFLiGetManager()->tmpHeap, size, align);
 }
 
-static void* RFLiAlloc(u32 size) {
+RFL_STATIC void* RFLiAlloc(u32 size) {
     return allocal_(size, 8);
 }
 
@@ -213,10 +217,14 @@ s32 RFLGetLastReason(void) {
     return !RFLAvailable() ? sRFLLastReason : RFLiGetLastReason_();
 }
 
-static RFLErrcode RFLWaitAsync(void) {
+RFL_STATIC RFLErrcode RFLWaitAsync(void) {
     volatile RFLErrcode status;
 
     do {
+#ifdef TARGET_PC
+        // Let pending NAND completions run (they are interrupts on the Wii).
+        PortPreemptPoint();
+#endif
         status = RFLGetAsyncStatus();
     } while (status == RFLErrcode_Busy);
 
@@ -265,7 +273,7 @@ BOOL RFLiNeedRepairError(void) {
     return *broken >> RFLiFileBrokenType_DBBroken & 1;
 }
 
-static BOOL RFLiCriticalError(void) {
+RFL_STATIC BOOL RFLiCriticalError(void) {
     u8* broken = &sRFLiFileBrokenType;
 
     if (RFLAvailable()) {

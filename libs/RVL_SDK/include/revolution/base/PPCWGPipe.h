@@ -7,6 +7,7 @@ extern  "C" {
 
 #include "revolution/types.h"
 
+#ifndef PORT_AURORA  // Aurora provides PPCWGPipe
 typedef union uPPCWGPipe {
     u8  u8;
     u16 u16;
@@ -19,6 +20,7 @@ typedef union uPPCWGPipe {
     f32 f32;
     f64 f64;
 } PPCWGPipe;
+#endif
 
 #ifdef  __cplusplus
 }

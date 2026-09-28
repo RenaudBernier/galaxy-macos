@@ -6,7 +6,7 @@
 
 J3DJointFactory::J3DJointFactory(J3DJointBlock const& block) {
     mJointInitData = JSUConvertOffsetToPtr< J3DJointInitData >(&block, (uintptr_t)block.mpJointInitData);
-    mIndexTable = JSUConvertOffsetToPtr< u16 >(&block, (uintptr_t)block.mpIndexTable);
+    mIndexTable = JSUConvertOffsetToPtr< BE(u16) >(&block, (uintptr_t)block.mpIndexTable);
 }
 
 J3DJoint* J3DJointFactory::create(int no) {

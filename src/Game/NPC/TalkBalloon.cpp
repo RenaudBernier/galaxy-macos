@@ -82,6 +82,13 @@ void TalkBalloon::close() {
     MR::startAnim(this, "End", 0);
 }
 
+#ifdef TARGET_PC
+// The host <cmath> already declares ::fmin/::fmax(float, float); keep this
+// file's own NaN behaviour under different names.
+#define fmin talkBalloonFmin
+#define fmax talkBalloonFmax
+#endif
+
 inline f32 fmin(f32 a, f32 b) {
     return b >= a ? a : b;
 }

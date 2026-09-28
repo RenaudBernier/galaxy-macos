@@ -16,12 +16,22 @@ extern const J3DIndTexMtxInfo j3dDefaultIndTexMtxInfo;
 extern const J3DTevStageInfo j3dDefaultTevStageInfo;
 extern const J3DIndTevStageInfo j3dDefaultIndTevStageInfo;
 
+extern const J3DTevSwapModeInfo j3dDefaultTevSwapMode;
+
+#ifdef TARGET_PC
+namespace J3DTevsDefault {
+    using ::j3dDefaultIndTevStageInfo;
+    using ::j3dDefaultTevStageInfo;
+    using ::j3dDefaultTevSwapMode;
+}  // namespace J3DTevsDefault
+#else
 // doing this matches. figure out why
 namespace J3DTevsDefault {
     extern "C" J3DIndTevStageInfo j3dDefaultIndTevStageInfo;
     extern "C" J3DTevStageInfo j3dDefaultTevStageInfo;
     extern "C" J3DTevSwapModeInfo j3dDefaultTevSwapMode;
 }  // namespace J3DTevsDefault
+#endif
 extern const J3DFogInfo j3dDefaultFogInfo;
 extern const J3DNBTScaleInfo j3dDefaultNBTScaleInfo;
 
@@ -173,8 +183,14 @@ struct J3DTevStage {
     }
 
     void load(u32 param_1) const {
+        // The stage holds the two BP commands as big-endian bytes.
+#ifdef TARGET_PC
+        J3DGDWriteBPCmd(PortReadBE32(&field_0x0));
+        J3DGDWriteBPCmd(PortReadBE32(&field_0x4));
+#else
         J3DGDWriteBPCmd(*(u32*)&field_0x0);
         J3DGDWriteBPCmd(*(u32*)&field_0x4);
+#endif
     }
 
     J3DTevStage& operator=(const J3DTevStage& other) {

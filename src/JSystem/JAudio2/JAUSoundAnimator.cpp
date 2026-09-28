@@ -47,7 +47,7 @@ void JAUSoundAnimator::ageSounds_() {
                 sound->stop();
                 continue;
             }
-            if (((JAUSoundAnimationSound*)sound->getUserData())->stopsWhenAnimationChanges()) {
+            if ((U32_TO_PTR(JAUSoundAnimationSound*, (u32)sound->getUserData()))->stopsWhenAnimationChanges()) {
                 sound->stop();
                 continue;
             }
@@ -105,7 +105,7 @@ void JAUSoundAnimator::updateSoundLifeTime_(f32 time, f32 speed) {
             continue;
         }
 
-        JAUSoundAnimationSound* anim = (JAUSoundAnimationSound*)handles->getSound(idx)->getUserData();
+        JAUSoundAnimationSound* anim = U32_TO_PTR(JAUSoundAnimationSound*, (u32)handles->getSound(idx)->getUserData());  // stored as a Wii address
 
         bool speedZeroStop = speed == 0.0f && anim->stopsWhenSpeedIsZero();
         modifySoundParams(&handles->getSound(idx)->mParams.getMoveParams(), anim, speed);

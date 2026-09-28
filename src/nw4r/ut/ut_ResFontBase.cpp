@@ -58,7 +58,7 @@ namespace nw4r {
             }
 
             GXTexFmt ResFontBase::GetTextureFormat() const {
-                return static_cast< GXTexFmt >(mFontInfo->pGlyph->sheetFormat);
+                return static_cast< GXTexFmt >(static_cast< u16 >(mFontInfo->pGlyph->sheetFormat));
             }
 
             int ResFontBase::GetLineFeed() const {
@@ -139,11 +139,11 @@ namespace nw4r {
 
                 case 2: {
                     struct CMapScanEntry {
-                        u16 ccode;  // at 0x0
-                        u16 index;  // at 0x2
+                        BE(u16) ccode;  // at 0x0
+                        BE(u16) index;  // at 0x2
                     };
                     struct CMapInfoScan {
-                        u16 num;                  // at 0x0
+                        BE(u16) num;              // at 0x0
                         CMapScanEntry entries[];  // at 0x2
                     };
 
@@ -204,7 +204,7 @@ namespace nw4r {
                 pGlyph->widths = GetCharWidthsFromIndex(index);
                 pGlyph->height = pTexGlyph->cellHeight;
 
-                pGlyph->texFormat = static_cast< GXTexFmt >(pTexGlyph->sheetFormat);
+                pGlyph->texFormat = static_cast< GXTexFmt >(static_cast< u16 >(pTexGlyph->sheetFormat));
 
                 pGlyph->texWidth = pTexGlyph->sheetWidth;
                 pGlyph->texHeight = pTexGlyph->sheetHeight;

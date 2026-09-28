@@ -249,7 +249,7 @@ namespace nw4r {
             u32 resOffs = sizeof(res::Material);
             const res::TexMap* const pResTexMap = detail::ConvertOffsToPtr< res::TexMap >(pRes, resOffs);
             resOffs += sizeof(res::TexMap) * pRes->resNum.GetTexMapNum();
-            const TexSRT* const resTexSRTs = detail::ConvertOffsToPtr< TexSRT >(pRes, resOffs);
+            const res::ResTexSRT* const resTexSRTs = detail::ConvertOffsToPtr< res::ResTexSRT >(pRes, resOffs);
             resOffs += sizeof(TexSRT) * pRes->resNum.GetTexSRTNum();
             const TexCoordGen* const resTexCoordGens = detail::ConvertOffsToPtr< TexCoordGen >(pRes, resOffs);
             resOffs += sizeof(TexCoordGen) * pRes->resNum.GetTexCoordGenNum();
@@ -325,7 +325,7 @@ namespace nw4r {
 
                 if (indTexSRTNum > 0) {
                     TexSRT* const indTexSRTs = GetIndTexSRTAry();
-                    const TexSRT* const pResIndMtx = detail::ConvertOffsToPtr< TexSRT >(pRes, resOffs);
+                    const res::ResTexSRT* const pResIndMtx = detail::ConvertOffsToPtr< res::ResTexSRT >(pRes, resOffs);
                     for (int i = 0; i < indTexSRTNum; ++i) {
                         indTexSRTs[i] = pResIndMtx[i];
                     }
@@ -720,7 +720,7 @@ namespace nw4r {
 
                     math::MTX34 mtx;
                     CalcTextureMtx(&mtx, pTexSrt[i]);
-                    GXLoadTexMtxImm(mtx, GetTexMtx(i), GX_MTX2x4);
+                    GXLoadTexMtxImm(static_cast< MtxPtr >(mtx), GetTexMtx(i), GX_MTX2x4);
                 }
             }
 

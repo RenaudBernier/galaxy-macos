@@ -172,7 +172,11 @@ public:
         }
 
         bool checkArea(const void* ptr) const {
+#ifdef TARGET_PC
+            return mBuffer <= (const u8*)ptr && (const u8*)ptr < mBuffer + ChunkSize;
+#else
             return (u8*)this + 0xc <= (u8*)ptr && (u8*)ptr < (u8*)this + (0xc + ChunkSize);
+#endif
         }
 
         MemoryChunk* getNextChunk() {
@@ -239,6 +243,10 @@ public:
 
     void* alloc(u32 size) {
         typename T< JASMemChunkPool< ChunkSize, T > >::Lock lock(*this);
+#ifdef TARGET_PC
+        // Blocks hold pointers: keep them 8-byte aligned.
+        size = ALIGN_NEXT(size, 8);
+#endif
         u32 freeSize = mChunk->getFreeSize();
         if (freeSize < size) {
             if (ChunkSize < size) {
@@ -292,11 +300,11 @@ namespace JASKernel {
 template < typename T >
 class JASPoolAllocObject {
 public:
-    static void* operator new(u32 size) {
+    static void* operator new(size_t size) {
         return memPool_.alloc(size);
     }
 
-    static void operator delete(void* addr, u32 size) {
+    static void operator delete(void* addr, size_t size) {
         memPool_.free(addr, size);
     }
 
@@ -331,11 +339,11 @@ public:
 template < typename T >
 class JASPoolAllocObject_MultiThreaded {
 public:
-    static void* operator new(u32 size) {
+    static void* operator new(size_t size) {
         return memPool_.alloc(size);
     }
 
-    static void operator delete(void* addr, u32 size) {
+    static void operator delete(void* addr, size_t size) {
         memPool_.free(addr, size);
     }
 

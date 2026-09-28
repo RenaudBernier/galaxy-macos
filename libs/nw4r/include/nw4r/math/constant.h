@@ -4,7 +4,7 @@
 
 namespace nw4r {
     namespace math {
-        const f32 F_MAX = 3.40282347e+38F;
+        const f32 F_MAX = 3.40282347e+38f;
     };
 };  // namespace nw4r
 

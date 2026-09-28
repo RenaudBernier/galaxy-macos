@@ -110,7 +110,7 @@ void PlantGroup::init(const JMapInfoIter& rIter) {
     }
 
     MR::tryRegisterDemoCast(this, rIter);
-    mHintTimer = MR::getRandom(3L, 10L) * 10;
+    mHintTimer = MR::getRandom((s32)3, (s32)10) * 10;
 }
 
 void PlantGroup::makeActorAppeared() {
@@ -152,7 +152,7 @@ void PlantGroup::initMember(s32 itemCount, const JMapInfoIter&) {
     }
 
     for (s32 i = 0; i < mMemberCount; i++) {
-        s32 index = MR::getRandom(0L, i + 1);
+        s32 index = MR::getRandom((s32)0, i + 1);
         bool hasItem = mMembers[i]->mHasItem;
         mMembers[i]->mHasItem = mMembers[index]->mHasItem;
         mMembers[index]->mHasItem = hasItem;
@@ -179,10 +179,20 @@ s32 PlantGroup::placeOnCollisionFormCircle(TVec3f* pCenter, const TVec3f& rGravi
         offset.scale(radius);
         TVec3f start(mPosition);
         start += offset;
+#ifdef TARGET_PC
+        // Pointers to temporaries dangle past the full expression.
+        const TVec3f up = rGravity * 100.0f;
+        const TVec3f* pUp = &up;
+        start -= *pUp;
+
+        const TVec3f ray = rGravity * ::sCheckLineLength;
+        const TVec3f* pRay = &ray;
+#else
         const TVec3f* pUp = &(rGravity * 100.0f);
         start -= *pUp;
 
         const TVec3f* pRay = &(rGravity * ::sCheckLineLength);
+#endif
 
         if (MR::getFirstPolyOnLineToMap(&mMembers[i]->mPosition, nullptr, start, *pRay)) {
             *pCenter += mMembers[i]->mPosition;

@@ -1,7 +1,7 @@
 #include "RVLFaceLibInternal.h"
 #include <revolution/mem/expHeap.h>
 #include <revolution/os.h>
-#include <cstdio>
+#include <stdio.h>
 
 #define ACC_SAFE_BUFFER_SIZE 0x2000
 #define MAX_RETRY_COUNT 30

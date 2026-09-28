@@ -1089,7 +1089,7 @@ void Mario::doLockOnHoming() {
         if (getAnimator()->isAnimationStop()) {
             changeAnimation("その場足踏み");
             if (!_750) {
-                setFrontVecKeepUp(direction, 15UL);
+                setFrontVecKeepUp(direction, (u32)15);
                 _334 = direction;
             }
         }

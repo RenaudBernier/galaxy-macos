@@ -1174,6 +1174,17 @@ f32 PSVECKillElement(__REGISTER const Vec* pSrc, __REGISTER const Vec* pKill, __
         psq_st     f2, 4(pDst),  0, 0
     }  // clang-format on
     return dot;
+#elif defined(TARGET_PC)
+    // Paired-single sequence: dot = (sx*kx + sy*ky) [fused] + sz*kz; dst = src - dot*kill [fused].
+    // All loads happen before the stores (pDst may alias pSrc).
+    f32 sx = pSrc->x, sy = pSrc->y, sz = pSrc->z;
+    f32 kx = pKill->x, ky = pKill->y, kz = pKill->z;
+    f32 dot = fmaf(sx, kx, sy * ky) + sz * kz;
+    Vec* pOut = const_cast< Vec* >(pDst);
+    pOut->x = -fmaf(dot, kx, -sx);
+    pOut->y = -fmaf(dot, ky, -sy);
+    pOut->z = -fmaf(dot, kz, -sz);
+    return dot;
 #endif
 }
 
@@ -1201,6 +1212,15 @@ namespace MR {
             psq_st f2, 8(pA1), 1, 0
         }
 
+#elif defined(TARGET_PC)
+        // *pA1 = *pA2 * a3 + *pA1 (fused), written back through the const pointer as the original does.
+        f32 x = fmaf(pA2->x, a3, pA1->x);
+        f32 y = fmaf(pA2->y, a3, pA1->y);
+        f32 z = fmaf(pA2->z, a3, pA1->z);
+        TVec3f* pOut = const_cast< TVec3f* >(pA1);
+        pOut->x = x;
+        pOut->y = y;
+        pOut->z = z;
 #endif
     }
 
@@ -1219,6 +1239,14 @@ namespace MR {
             psq_st    f3, 8(pA3), 1, 0
         }
 
+#elif defined(TARGET_PC)
+        // *pA3 = *pA2 * a5 + (*pA1 * a4), the add fused with the second multiply.
+        f32 x = fmaf(pA2->x, a5, pA1->x * a4);
+        f32 y = fmaf(pA2->y, a5, pA1->y * a4);
+        f32 z = fmaf(pA2->z, a5, pA1->z * a4);
+        pA3->x = x;
+        pA3->y = y;
+        pA3->z = z;
 #endif
     }
 
@@ -1628,8 +1656,12 @@ f32 JMASqrt(__REGISTER f32 value) {
         return value;
     }
 
+#ifdef TARGET_PC
+    f32 inverse = __frsqrte(value);
+#else
     __REGISTER f32 inverse;
     __asm { frsqrte inverse, value }
+#endif
     f32 estimate = inverse * value;
     inverse = -(estimate * inverse - 3.0f);
     inverse *= estimate;

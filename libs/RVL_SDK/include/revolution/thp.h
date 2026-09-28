@@ -66,6 +66,41 @@ typedef struct {
   s16 yn2;
 } THPAudioDecodeInfo;
 
+#if defined(TARGET_PC) && defined(__cplusplus)
+// Read as is from the (big-endian) movie file.
+typedef struct {
+    char magic[4];
+    BE(u32) version;
+    BE(u32) bufSize;
+    BE(u32) audioMaxSamples;
+    BE(f32) frameRate;
+    BE(u32) numFrames;
+    BE(u32) firstFrameSize;
+    BE(u32) movieDataSize;           
+    BE(u32) compInfoDataOffsets;
+    BE(u32) offsetDataOffsets;
+    BE(u32) movieDataOffsets;
+    BE(u32) finalFrameDataOffsets;
+} THPHeader;
+
+typedef struct {
+    BE(u32) xSize;
+    BE(u32) ySize;
+    BE(u32) videoType;
+} THPVideoInfo;
+
+typedef struct {
+    BE(u32) numComponents;
+    u8 frameComp[16];
+} THPFrameCompInfo;
+
+typedef struct {
+    BE(u32) sndChannels;
+    BE(u32) sndFrequency;
+    BE(u32) sndNumSamples;
+    BE(u32) sndNumTracks;
+} THPAudioInfo;
+#else
 typedef struct {
     char magic[4];
     u32 version;
@@ -98,6 +133,7 @@ typedef struct {
     u32 sndNumSamples;
     u32 sndNumTracks;
 } THPAudioInfo;
+#endif
 
 typedef struct {
     u8* ptr;

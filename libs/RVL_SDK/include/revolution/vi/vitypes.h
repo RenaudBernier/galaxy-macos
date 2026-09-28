@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/vi.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef VITYPES_H
 #define VITYPES_H
 
@@ -68,3 +71,4 @@ typedef void (*VIRetraceCallback)(u32 retraceCount);
 #endif
 
 #endif  // VITYPES_H
+#endif  // TARGET_PC && PORT_AURORA

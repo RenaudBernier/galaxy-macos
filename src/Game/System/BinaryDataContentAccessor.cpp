@@ -6,17 +6,19 @@
 
 BinaryDataContentHeaderSerializer::BinaryDataContentHeaderSerializer(u8* pData, u32 dataSize)
     : mStream(pData, dataSize), mAttributeNum(0), mDataSize(0) {
-    u16 numAttributes = 0;
-    mStream.write(&numAttributes, sizeof(u16));
-    u16 streamDataSize = 0;
-    mStream.write(&streamDataSize, sizeof(u16));
+    u8 value[2];
+    BinaryDataWriteU16(value, 0);  // attribute count
+    mStream.write(value, sizeof(u16));
+    BinaryDataWriteU16(value, 0);  // data size
+    mStream.write(value, sizeof(u16));
 }
 
 void BinaryDataContentHeaderSerializer::addAttribute(const char* pName, u32 attributeSize) {
-    u16 hash = MR::getHashCode(pName);
-    mStream.write(&hash, sizeof(u16));
-    u16 offset = mDataSize;
-    mStream.write(&offset, sizeof(u16));
+    u8 value[2];
+    BinaryDataWriteU16(value, MR::getHashCode(pName));
+    mStream.write(value, sizeof(u16));
+    BinaryDataWriteU16(value, mDataSize);
+    mStream.write(value, sizeof(u16));
     mDataSize += attributeSize;
     mAttributeNum++;
 }
@@ -24,10 +26,11 @@ void BinaryDataContentHeaderSerializer::addAttribute(const char* pName, u32 attr
 void BinaryDataContentHeaderSerializer::flush() {
     s32 restorePos = mStream.getPosition();
     mStream.seek(0, SEEK_FROM_START);
-    u16 attributeNum = mAttributeNum;
-    mStream.write(&attributeNum, sizeof(u16));
-    u16 dataSize = mDataSize;
-    mStream.write(&dataSize, sizeof(u16));
+    u8 value[2];
+    BinaryDataWriteU16(value, mAttributeNum);
+    mStream.write(value, sizeof(u16));
+    BinaryDataWriteU16(value, mDataSize);
+    mStream.write(value, sizeof(u16));
     mStream.seek(restorePos, SEEK_FROM_START);
 }
 
@@ -43,16 +46,16 @@ BinaryDataContentAccessor::BinaryDataContentAccessor(u8* pData) : mData(pData) {
 }
 
 s32 BinaryDataContentAccessor::getHeaderSize() const {
-    return *reinterpret_cast< u16* >(mData + 0) * 4 + 4;
+    return BinaryDataReadU16(mData + 0) * 4 + 4;
 }
 
 s32 BinaryDataContentAccessor::getDataSize() const {
-    return *reinterpret_cast< u16* >(mData + 2);
+    return BinaryDataReadU16(mData + 2);
 }
 
 // stripped
 s32 BinaryDataContentAccessor::getAttributeNum() const {
-    return *reinterpret_cast< u16* >(mData + 0);
+    return BinaryDataReadU16(mData + 0);
 }
 
 void* BinaryDataContentAccessor::getPointer(const char* pAttributeName, u8* pData) const {

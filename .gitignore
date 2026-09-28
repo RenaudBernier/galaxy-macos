@@ -43,3 +43,8 @@ compile_commands.json
 # Miscellaneous
 /*.txt
 *.exe
+
+# macOS port
+*.log
+.DS_Store
+*.dSYM/

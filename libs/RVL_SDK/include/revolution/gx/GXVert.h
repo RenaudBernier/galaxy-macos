@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXVERT_H
 #define GXVERT_H
 
@@ -82,3 +85,4 @@ __GXCDEFX(GXTexCoord1x8, 1, u8)
 #endif
 
 #endif  // GXVERT_H
+#endif  // TARGET_PC && PORT_AURORA

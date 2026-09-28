@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXTEV_H
 #define GXTEV_H
 
@@ -35,3 +38,4 @@ void GXSetTevSwapMode(GXTevStageID, GXTevSwapSel, GXTevSwapSel);
 #endif
 
 #endif // GXTEV_H
+#endif  // TARGET_PC && PORT_AURORA

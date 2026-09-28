@@ -4,6 +4,12 @@
 #include "Game/Util/StringUtil.hpp"
 #include <JSystem/JAudio2/JAISound.hpp>
 
+#ifdef TARGET_PC
+// MWCC compiled this as C++98, where -1 in a brace initialiser of an unsigned
+// field silently wraps (0xFFFF...); keep that.
+#pragma clang diagnostic ignored "-Wc++11-narrowing"
+#endif
+
 struct StageBgmData {
     /* 0x00 */ const char* mSceneName;
     /* 0x04 */ const char* mStageName;

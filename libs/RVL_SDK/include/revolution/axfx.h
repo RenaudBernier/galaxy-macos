@@ -1,7 +1,7 @@
 #ifndef AXFX_H
 #define AXFX_H
 
-#include <cstdio>
+#include <stdio.h>
 #include "revolution.h"
 
 #ifdef __cplusplus

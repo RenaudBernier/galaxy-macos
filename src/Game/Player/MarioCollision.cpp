@@ -1702,7 +1702,7 @@ bool Mario::updateBinderInfo() {
                     mJumpVec = horizontal;
                 }
 
-                startPadVib(0UL);
+                startPadVib((u32)0);
                 firstCeiling = false;
                 *_4C8 = *triangle;
             }

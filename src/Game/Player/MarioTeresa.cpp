@@ -568,7 +568,7 @@ void MarioTeresa::procControl() {
 void MarioActor::runTeresaBaseAnimation() {
     if (!mMario->isStatusActive(MarioStatus_Wait) && !_9B8->isRun("基本")) {
         _9B8->changeAnimation("基本");
-        _9B4 = MR::getRandom(60L, 180L);
+        _9B4 = MR::getRandom((s32)60, (s32)180);
         MR::startBtp(_9A4, "blink");
     }
 }
@@ -585,7 +585,7 @@ void MarioActor::changeTeresaAnimation(const char* pAnimation, s32 interpolation
     }
 
     if (MR::isEqualString(pAnimation, "wait") || MR::isEqualString(pAnimation, "run")) {
-        _9B4 = MR::getRandom(60L, 180L);
+        _9B4 = MR::getRandom((s32)60, (s32)180);
         MR::stopBtp(_9A4);
         return;
     }
@@ -689,7 +689,7 @@ void MarioActor::updateTeresaAnimation() {
     if (_9B4) {
         _9B4--;
         if (!_9B4) {
-            _9B4 = MR::getRandom(90L, 240L);
+            _9B4 = MR::getRandom((s32)90, (s32)240);
             MR::startBtp(_9A4, "blink");
         }
     }

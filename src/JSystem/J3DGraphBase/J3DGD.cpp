@@ -334,12 +334,19 @@ void J3DGDSetTexLookupMode(GXTexMapID id, GXTexWrapMode wrap_s, GXTexWrapMode wr
     J3DGDWriteBPCmd(BP_TEX_MODE1((u8)(16.0f * min_lod), (u8)(16.0f * max_lod), J3DGDTexMode1Ids[id]));
 }
 
+#ifdef TARGET_PC
+// "Physical" address of game memory in the emulated Wii address space.
+#define J3DGD_CACHED_TO_PHYSICAL(caddr) (PTR_TO_U32(caddr) - OS_BASE_CACHED)
+#else
+#define J3DGD_CACHED_TO_PHYSICAL(caddr) OSCachedToPhysical(caddr)
+#endif
+
 void J3DGDSetTexImgAttr(GXTexMapID id, u16 width, u16 height, GXTexFmt format) {
     J3DGDWriteBPCmd(BP_IMAGE_ATTR(width - 1, height - 1, format, J3DGDTexImage0Ids[id]));
 }
 
 void J3DGDSetTexImgPtr(GXTexMapID id, void* image_ptr) {
-    J3DGDWriteBPCmd(BP_IMAGE_PTR(OSCachedToPhysical(image_ptr) >> 5, J3DGDTexImage3Ids[id]));
+    J3DGDWriteBPCmd(BP_IMAGE_PTR(J3DGD_CACHED_TO_PHYSICAL(image_ptr) >> 5, J3DGDTexImage3Ids[id]));
 }
 
 void J3DGDSetTexImgPtrRaw(GXTexMapID id, u32 image_ptr_raw) {
@@ -354,7 +361,7 @@ void J3DGDSetTexTlut(GXTexMapID id, u32 tmem_addr, GXTlutFmt format) {
 void J3DGDLoadTlut(void* tlut_ptr, u32 tmem_addr, GXTlutSize size) {
     J3DGDWriteBPCmd(0xFEFFFF00);
     J3DGDWriteBPCmd(0xF000000);
-    J3DGDWriteBPCmd(BP_LOAD_TLUT0(OSCachedToPhysical(tlut_ptr) >> 5, 0x64));
+    J3DGDWriteBPCmd(BP_LOAD_TLUT0(J3DGD_CACHED_TO_PHYSICAL(tlut_ptr) >> 5, 0x64));
     J3DGDWriteBPCmd(BP_LOAD_TLUT1((tmem_addr - 0x80000) >> 9, size, 0x65));
     J3DGDWriteBPCmd(0xFEFFFF00);
     J3DGDWriteBPCmd(0xF000000);

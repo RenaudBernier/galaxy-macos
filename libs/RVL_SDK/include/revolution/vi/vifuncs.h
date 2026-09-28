@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/vi.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef VIFUNCS_H
 #define VIFUNCS_H
 
@@ -36,3 +39,4 @@ BOOL VIResetDimmingCount();
 #endif
 
 #endif // VIFUNCS_H
+#endif  // TARGET_PC && PORT_AURORA

@@ -4,10 +4,20 @@
 namespace nw4r {
     namespace ut {
         namespace {
+#ifdef TARGET_PC
+            // PORT: file-reloc - the 4-byte field holds a big-endian file offset;
+            // store the relocated pointer as a Wii address in the same 4 bytes.
+            template < typename T >
+            inline void ResolveOffset(Ptr32< T >& rpPtr, void* pBase) {
+                const s32 offset = static_cast< s32 >(PortReadBE32(&rpPtr.addr));
+                rpPtr = reinterpret_cast< T* >(static_cast< char* >(pBase) + offset);
+            }
+#else
             template < typename T >
             inline void ResolveOffset(T*& rpPtr, void* pBase) {
                 rpPtr = reinterpret_cast< T* >(static_cast< char* >(pBase) + reinterpret_cast< s32 >(rpPtr));
             }
+#endif
 
         }  // namespace
 

@@ -8,12 +8,13 @@
 class AudMeHandle;
 class AudMeTrack;
 
+// Entries of the ME playing-parameter resource; big-endian file data.
 struct AudMePlayingParams {
     /* 0x0 */ u8 mPriority;
     /* 0x1 */ u8 mChordVolume;
     /* 0x2 */ u8 _2;
     /* 0x3 */ u8 _3;
-    /* 0x4 */ u16 _4;
+    /* 0x4 */ BE(u16) _4;
     /* 0x6 */ u8 _6;
     /* 0x7 */ u8 _7;
 };
@@ -27,7 +28,7 @@ public:
 
     /* 0x0 */ u32 mNumEntries;
     /* 0x4 */ AudMePlayingParams* mParams;
-    /* 0x8 */ const char** mNames;
+    /* 0x8 */ PTR32(const char)* mNames;  // 4-byte slots inside the resource
 };
 
 class AudMe : public JSULink< AudMe >, public JASPoolAllocObject< AudMe > {
@@ -96,9 +97,10 @@ public:
     /* 0x94 */ s32 _94;
 };
 
+// ME sequence start table; big-endian file data.
 struct AudMeTable {
-    /* 0x0 */ s32 mNumEntries;
-    /* 0x4 */ s32 mSeqStartPos[1];
+    /* 0x0 */ BE(s32) mNumEntries;
+    /* 0x4 */ BE(s32) mSeqStartPos[1];
 };
 
 class AudMeMgr : public JASGlobalInstance< AudMeMgr > {

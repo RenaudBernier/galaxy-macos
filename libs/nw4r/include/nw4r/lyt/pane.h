@@ -31,7 +31,7 @@ namespace nw4r {
         class DrawInfo;
         class Pane;
 
-#ifdef __MWERKS__
+#if defined(__MWERKS__) || defined(TARGET_PC)  // the node offset must be the real one
         typedef ut::LinkList< Pane, offsetof(detail::PaneBase, mLink) > PaneList;
 #else
         typedef ut::LinkList< Pane, 0 > PaneList;

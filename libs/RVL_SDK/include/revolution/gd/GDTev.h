@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gd.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GDTEV_H
 #define GDTEV_H
 
@@ -66,11 +69,11 @@
 #define TEV_COLOR_ENV_DEST_SHIFT 22
 #define TEV_COLOR_ENV_RID_SHIFT 24
 #define TEV_COLOR_ENV(seld, selc, selb, sela, bias, sub, clamp, shift, dest, rid)                                                                    \
-    ((((unsigned long)(seld)) << TEV_COLOR_ENV_SELD_SHIFT) | (((unsigned long)(selc)) << TEV_COLOR_ENV_SELC_SHIFT) |                                 \
-     (((unsigned long)(selb)) << TEV_COLOR_ENV_SELB_SHIFT) | (((unsigned long)(sela)) << TEV_COLOR_ENV_SELA_SHIFT) |                                 \
-     (((unsigned long)(bias)) << TEV_COLOR_ENV_BIAS_SHIFT) | (((unsigned long)(sub)) << TEV_COLOR_ENV_SUB_SHIFT) |                                   \
-     (((unsigned long)(clamp)) << TEV_COLOR_ENV_CLAMP_SHIFT) | (((unsigned long)(shift)) << TEV_COLOR_ENV_SHIFT_SHIFT) |                             \
-     (((unsigned long)(dest)) << TEV_COLOR_ENV_DEST_SHIFT) | (((unsigned long)(rid)) << TEV_COLOR_ENV_RID_SHIFT))
+    ((((u32)(seld)) << TEV_COLOR_ENV_SELD_SHIFT) | (((u32)(selc)) << TEV_COLOR_ENV_SELC_SHIFT) |                                 \
+     (((u32)(selb)) << TEV_COLOR_ENV_SELB_SHIFT) | (((u32)(sela)) << TEV_COLOR_ENV_SELA_SHIFT) |                                 \
+     (((u32)(bias)) << TEV_COLOR_ENV_BIAS_SHIFT) | (((u32)(sub)) << TEV_COLOR_ENV_SUB_SHIFT) |                                   \
+     (((u32)(clamp)) << TEV_COLOR_ENV_CLAMP_SHIFT) | (((u32)(shift)) << TEV_COLOR_ENV_SHIFT_SHIFT) |                             \
+     (((u32)(dest)) << TEV_COLOR_ENV_DEST_SHIFT) | (((u32)(rid)) << TEV_COLOR_ENV_RID_SHIFT))
 
 #define TEV_ALPHA_ENV_RSWAP_SHIFT 0
 #define TEV_ALPHA_ENV_TSWAP_SHIFT 2
@@ -85,28 +88,28 @@
 #define TEV_ALPHA_ENV_DEST_SHIFT 22
 #define TEV_ALPHA_ENV_RID_SHIFT 24
 #define TEV_ALPHA_ENV(rswap, tswap, seld, selc, selb, sela, bias, sub, clamp, shift, dest, rid)                                                      \
-    ((((unsigned long)(rswap)) << TEV_ALPHA_ENV_RSWAP_SHIFT) | (((unsigned long)(tswap)) << TEV_ALPHA_ENV_TSWAP_SHIFT) |                             \
-     (((unsigned long)(seld)) << TEV_ALPHA_ENV_SELD_SHIFT) | (((unsigned long)(selc)) << TEV_ALPHA_ENV_SELC_SHIFT) |                                 \
-     (((unsigned long)(selb)) << TEV_ALPHA_ENV_SELB_SHIFT) | (((unsigned long)(sela)) << TEV_ALPHA_ENV_SELA_SHIFT) |                                 \
-     (((unsigned long)(bias)) << TEV_ALPHA_ENV_BIAS_SHIFT) | (((unsigned long)(sub)) << TEV_ALPHA_ENV_SUB_SHIFT) |                                   \
-     (((unsigned long)(clamp)) << TEV_ALPHA_ENV_CLAMP_SHIFT) | (((unsigned long)(shift)) << TEV_ALPHA_ENV_SHIFT_SHIFT) |                             \
-     (((unsigned long)(dest)) << TEV_ALPHA_ENV_DEST_SHIFT) | (((unsigned long)(rid)) << TEV_ALPHA_ENV_RID_SHIFT))
+    ((((u32)(rswap)) << TEV_ALPHA_ENV_RSWAP_SHIFT) | (((u32)(tswap)) << TEV_ALPHA_ENV_TSWAP_SHIFT) |                             \
+     (((u32)(seld)) << TEV_ALPHA_ENV_SELD_SHIFT) | (((u32)(selc)) << TEV_ALPHA_ENV_SELC_SHIFT) |                                 \
+     (((u32)(selb)) << TEV_ALPHA_ENV_SELB_SHIFT) | (((u32)(sela)) << TEV_ALPHA_ENV_SELA_SHIFT) |                                 \
+     (((u32)(bias)) << TEV_ALPHA_ENV_BIAS_SHIFT) | (((u32)(sub)) << TEV_ALPHA_ENV_SUB_SHIFT) |                                   \
+     (((u32)(clamp)) << TEV_ALPHA_ENV_CLAMP_SHIFT) | (((u32)(shift)) << TEV_ALPHA_ENV_SHIFT_SHIFT) |                             \
+     (((u32)(dest)) << TEV_ALPHA_ENV_DEST_SHIFT) | (((u32)(rid)) << TEV_ALPHA_ENV_RID_SHIFT))
 
 #define TEV_REGISTERL_R_SHIFT 0
 #define TEV_REGISTERL_A_SHIFT 12
 #define TEV_REGISTERL_TYPE_SHIFT 23
 #define TEV_REGISTERL_RID_SHIFT 24
 #define TEV_REGISTERL(r, a, t, rid)                                                                                                                  \
-    ((((unsigned long)(r)) << TEV_REGISTERL_R_SHIFT) | (((unsigned long)(a)) << TEV_REGISTERL_A_SHIFT) |                                             \
-     (((unsigned long)(t)) << TEV_REGISTERL_TYPE_SHIFT) | (((unsigned long)(rid)) << TEV_REGISTERL_RID_SHIFT))
+    ((((u32)(r)) << TEV_REGISTERL_R_SHIFT) | (((u32)(a)) << TEV_REGISTERL_A_SHIFT) |                                             \
+     (((u32)(t)) << TEV_REGISTERL_TYPE_SHIFT) | (((u32)(rid)) << TEV_REGISTERL_RID_SHIFT))
 
 #define TEV_REGISTERH_B_SHIFT 0
 #define TEV_REGISTERH_G_SHIFT 12
 #define TEV_REGISTERH_TYPE_SHIFT 23
 #define TEV_REGISTERH_RID_SHIFT 24
 #define TEV_REGISTERH(b, g, t, rid)                                                                                                                  \
-    ((((unsigned long)(b)) << TEV_REGISTERH_B_SHIFT) | (((unsigned long)(g)) << TEV_REGISTERH_G_SHIFT) |                                             \
-     (((unsigned long)(t)) << TEV_REGISTERH_TYPE_SHIFT) | (((unsigned long)(rid)) << TEV_REGISTERH_RID_SHIFT))
+    ((((u32)(b)) << TEV_REGISTERH_B_SHIFT) | (((u32)(g)) << TEV_REGISTERH_G_SHIFT) |                                             \
+     (((u32)(t)) << TEV_REGISTERH_TYPE_SHIFT) | (((u32)(rid)) << TEV_REGISTERH_RID_SHIFT))
 
 #define TEV_ALPHAFUNC_A0_SHIFT 0
 #define TEV_ALPHAFUNC_A1_SHIFT 8
@@ -115,9 +118,9 @@
 #define TEV_ALPHAFUNC_LOGIC_SHIFT 22
 #define TEV_ALPHAFUNC_RID_SHIFT 24
 #define TEV_ALPHAFUNC(a0, a1, op0, op1, logic, rid)                                                                                                  \
-    ((((unsigned long)(a0)) << TEV_ALPHAFUNC_A0_SHIFT) | (((unsigned long)(a1)) << TEV_ALPHAFUNC_A1_SHIFT) |                                         \
-     (((unsigned long)(op0)) << TEV_ALPHAFUNC_OP0_SHIFT) | (((unsigned long)(op1)) << TEV_ALPHAFUNC_OP1_SHIFT) |                                     \
-     (((unsigned long)(logic)) << TEV_ALPHAFUNC_LOGIC_SHIFT) | (((unsigned long)(rid)) << TEV_ALPHAFUNC_RID_SHIFT))
+    ((((u32)(a0)) << TEV_ALPHAFUNC_A0_SHIFT) | (((u32)(a1)) << TEV_ALPHAFUNC_A1_SHIFT) |                                         \
+     (((u32)(op0)) << TEV_ALPHAFUNC_OP0_SHIFT) | (((u32)(op1)) << TEV_ALPHAFUNC_OP1_SHIFT) |                                     \
+     (((u32)(logic)) << TEV_ALPHAFUNC_LOGIC_SHIFT) | (((u32)(rid)) << TEV_ALPHAFUNC_RID_SHIFT))
 
 #define RAS1_TREF_TI0_SHIFT 0
 #define RAS1_TREF_TC0_SHIFT 3
@@ -131,11 +134,11 @@
 #define RAS1_TREF_PAD1_SHIFT 22
 #define RAS1_TREF_RID_SHIFT 24
 #define RAS1_TREF(ti0, tc0, te0, cc0, ti1, tc1, te1, cc1, rid)                                                                                       \
-    ((((unsigned long)(ti0)) << RAS1_TREF_TI0_SHIFT) | (((unsigned long)(tc0)) << RAS1_TREF_TC0_SHIFT) |                                             \
-     (((unsigned long)(te0)) << RAS1_TREF_TE0_SHIFT) | (((unsigned long)(cc0)) << RAS1_TREF_CC0_SHIFT) |                                             \
-     (((unsigned long)(ti1)) << RAS1_TREF_TI1_SHIFT) | (((unsigned long)(tc1)) << RAS1_TREF_TC1_SHIFT) |                                             \
-     (((unsigned long)(te1)) << RAS1_TREF_TE1_SHIFT) | (((unsigned long)(cc1)) << RAS1_TREF_CC1_SHIFT) |                                             \
-     (((unsigned long)(rid)) << RAS1_TREF_RID_SHIFT))
+    ((((u32)(ti0)) << RAS1_TREF_TI0_SHIFT) | (((u32)(tc0)) << RAS1_TREF_TC0_SHIFT) |                                             \
+     (((u32)(te0)) << RAS1_TREF_TE0_SHIFT) | (((u32)(cc0)) << RAS1_TREF_CC0_SHIFT) |                                             \
+     (((u32)(ti1)) << RAS1_TREF_TI1_SHIFT) | (((u32)(tc1)) << RAS1_TREF_TC1_SHIFT) |                                             \
+     (((u32)(te1)) << RAS1_TREF_TE1_SHIFT) | (((u32)(cc1)) << RAS1_TREF_CC1_SHIFT) |                                             \
+     (((u32)(rid)) << RAS1_TREF_RID_SHIFT))
 
 #define BP_TEV_COLOR(d, c, b, a, bias, op, clamp, scale, out, id)                                                                                    \
     ((u32)(d) << 0 | (u32)(c) << 4 | (u32)(b) << 8 | (u32)(a) << 12 | (u32)(bias) << 16 | (u32)(op) << 18 | (u32)(clamp) << 19 |                     \
@@ -164,3 +167,4 @@
      (u32)(enable1) << 18 | (u32)(color1) << 19 | (u32)(id) << 24)
 
 #endif  // GDTEV_H
+#endif  // TARGET_PC && PORT_AURORA

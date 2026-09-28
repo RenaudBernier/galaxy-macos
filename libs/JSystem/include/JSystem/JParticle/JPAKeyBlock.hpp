@@ -11,5 +11,6 @@ struct JPAKeyBlock {
     }
 
     const u8* mDataStart;
-    const f32* field_0x4;
+    // Key frames (big-endian floats in the resource): time, value, in/out tangents.
+    const BE(f32)* field_0x4;
 };

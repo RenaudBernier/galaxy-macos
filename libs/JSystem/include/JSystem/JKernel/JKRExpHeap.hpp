@@ -33,9 +33,15 @@ public:
         /* 0x02 */ u8 mFlags;
         /* 0x03 */ u8 mGroupId;
         /* 0x04 */ u32 mSize;
-        /* 0x08 */ CMemBlock* mPrev;
-        /* 0x0C */ CMemBlock* mNext;
+        // The block header must stay 16 bytes (content alignment, size math);
+        // on the host the links are 32-bit Wii addresses.
+        /* 0x08 */ PTR32(CMemBlock) mPrev;
+        /* 0x0C */ PTR32(CMemBlock) mNext;
     };
+
+#ifdef TARGET_PC
+    static_assert(sizeof(CMemBlock) == 0x10, "JKRExpHeap block header must match the Wii layout");
+#endif
 
     JKRExpHeap(void*, u32, JKRHeap*, bool);
 

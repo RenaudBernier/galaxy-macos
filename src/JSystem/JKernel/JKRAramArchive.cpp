@@ -2,6 +2,7 @@
 #include "JSystem/JKernel/JKRAramArchive.hpp"
 #include "JSystem/JKernel/JKRAram.hpp"
 #include "JSystem/JKernel/JKRCompression.hpp"
+#include "JSystem/JKernel/JKRDecomp.hpp"
 #include "JSystem/JKernel/JKRDvdAramRipper.hpp"
 #include "JSystem/JKernel/JKRHeap.hpp"
 #include "JSystem/JUtility/JUTException.hpp"
@@ -9,7 +10,7 @@
 
 extern "C" int abs(int);
 
-JKRAramArchive::JKRAramArchive(long entryNum, EMountDirection mountDir) : JKRArchive(entryNum, MOUNT_MODE_ARAM) {
+JKRAramArchive::JKRAramArchive(s32 entryNum, EMountDirection mountDir) : JKRArchive(entryNum, MOUNT_MODE_ARAM) {
     mMountDir = mountDir;
 
     if (!open(entryNum)) {
@@ -241,7 +242,7 @@ u32 JKRAramArchive::fetchResource_subroutine(u32 entryNum, u32 length, JKRHeap* 
     case COMPRESSION_YAY0:
     case COMPRESSION_YAZ0: {
         u8 headerBuf[0x40];
-        u8* alignHeader = reinterpret_cast< u8* >(ALIGN_NEXT(reinterpret_cast< s32 >(&headerBuf[0]), sizeof(RarcHeader)));
+        u8* alignHeader = U32_TO_PTR(u8*, ALIGN_NEXT(PTR_TO_U32(&headerBuf[0]), sizeof(RarcHeader)));
         JKRAramToMainRam(entryNum, alignHeader, sizeof(RarcHeader), EXPAND_SWITCH_UNKNOWN0, 0, NULL, -1, NULL);
         u32 decompressedLen = ALIGN_NEXT(JKRDecompExpandSize(alignHeader), sizeof(RarcHeader));
         buffer = static_cast< u8* >(JKRAllocFromHeap(pHeap, decompressedLen, sizeof(RarcHeader)));
@@ -277,7 +278,7 @@ u32 JKRAramArchive::getExpandedResSize(const void* ptr) const {
     }
 
     u8 tmpBuf[0x40];
-    u8* buf = reinterpret_cast< u8* >(ALIGN_PREV(reinterpret_cast< s32 >(&tmpBuf[0x1F]), 0x20));
+    u8* buf = U32_TO_PTR(u8*, ALIGN_PREV(PTR_TO_U32(&tmpBuf[0x1F]), 0x20));
     JKRAramToMainRam(entry->mDataOffset + mBlock->getAddress(), buf, 0x20, EXPAND_SWITCH_UNKNOWN0, 0, NULL, -1, NULL);
     u32 expandSize2 = JKRDecompExpandSize(buf);
     const_cast< JKRAramArchive* >(this)->setExpandSize(entry, expandSize2);

@@ -160,7 +160,15 @@ namespace MR {
                 } else if (tag.getGroup() == 11) {
                     count += 2;
                 } else if (tag.getGroup() == 7) {
+#ifdef TARGET_PC
+                {
+                    u32 addr;
+                    memcpy(&addr, tag.getParamPtr(0), sizeof(addr));
+                    count += countMessageChar(U32_TO_PTR(const wchar_t*, addr));
+                }
+#else
                     count += countMessageChar(*reinterpret_cast< const wchar_t* const* >(tag.getParamPtr(0)));
+#endif
                 } else if (tag.isGroupTagId(1, 1)) {
                     break;
                 }

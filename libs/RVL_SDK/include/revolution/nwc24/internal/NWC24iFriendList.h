@@ -1,7 +1,7 @@
 #ifndef RVL_SDK_NWC24_INTERNAL_FRIEND_LIST_H
 #define RVL_SDK_NWC24_INTERNAL_FRIEND_LIST_H
 #include "revolution/types.h"
-#include <cstdlib>
+#include <stdlib.h>
 
 #include "revolution/nwc24/NWC24Types.h"
 #ifdef __cplusplus

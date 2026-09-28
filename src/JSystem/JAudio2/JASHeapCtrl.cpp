@@ -12,9 +12,15 @@ JASHeap::JASHeap(JASDisposer* pDisposer) : mTree(this), mDisposer(pDisposer), mB
 
 void JASHeap::initRootHeap(void* pBase, u32 size) {
     OSLockMutex(&mMutex);
+#ifdef TARGET_PC
+    mBase = U32_TO_PTR(u8*, OSRoundUp32B(PTR_TO_U32(pBase)));
+    mHeap = nullptr;
+    mSize = size - (u32)(mBase - (u8*)pBase);
+#else
     mBase = (u8*)OSRoundUp32B(pBase);
     mHeap = nullptr;
     mSize = size - (u32(mBase) - u32(pBase));
+#endif
     OSUnlockMutex(&mMutex);
 }
 
@@ -47,7 +53,7 @@ bool JASHeap::alloc(JASHeap* pParent, u32 size) {
             break;
         }
 
-        u32 gapSize = u32(it->mBase) - u32(pCurrent);
+        u32 gapSize = (u32)((u8*)it->mBase - pCurrent);
         if (gapSize >= size && gapSize < smallestGap) {
             pNext = &*it;
             pAddress = pCurrent;
@@ -277,7 +283,7 @@ void JASKernel::setupAramHeap(u32 base, u32 size) {
     OSReport("setupAramHeap %x, %x, %x\n", base, ARGetBaseAddress(), size);
     base = ARGetBaseAddress();
     sAramBase = base;
-    audioAramHeap.initRootHeap((void*)sAramBase, size);
+    audioAramHeap.initRootHeap(U32_TO_PTR(void*, sAramBase), size);  // PORT: hw
 }
 
 JASHeap* JASKernel::getAramHeap() {

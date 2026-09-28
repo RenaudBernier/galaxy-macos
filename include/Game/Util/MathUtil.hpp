@@ -676,6 +676,25 @@ namespace MR {
         return x;
     }
 
+#elif defined(TARGET_PC)
+    // frsqrte estimate followed by the same Newton step as the hardware path.
+    inline f32 frsqrte(f32 x) {
+        f32 recip = __frsqrte(x);
+        return recip * x;
+    }
+
+    inline f32 fastSqrtf(f32 x) {
+        if (x > 0.0f) {
+            f32 recip = __frsqrte(x);
+            f32 v = recip * x;
+            recip = -(v * recip - 3.0f);
+            recip = (recip * v);
+            recip *= 0.5f;
+            return recip;
+        }
+
+        return x;
+    }
 #else
     f32 frsqrte(f32);
     f32 fastSqrtf(f32);

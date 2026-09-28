@@ -63,7 +63,8 @@ namespace nw4r {
 
             void TexCoordAry::Copy(const void* pResTex, u8 texCoordNum) {
                 mNum = ut::Max(mNum, texCoordNum);
-                const math::VEC2(*src)[4] = reinterpret_cast< ConstTexCoordQuad >(pResTex);
+                // Resource texture coordinates are big-endian.
+                const res::ResVEC2(*src)[4] = reinterpret_cast< const res::ResVEC2(*)[4] >(pResTex);
                 for (int j = 0; j < texCoordNum; j++) {
                     for (int i = 0; i < 4; i++) {
                         mData[j][i] = src[j][i];

@@ -44,7 +44,7 @@ void RingBeamer::init(const JMapInfoIter& rIter) {
         MR::listenStageSwitchOffB(this, MR::Functor(this, &RingBeamer::syncSwitchOffB));
     }
     MR::joinToGroupArray(this, rIter, nullptr, 32);
-    // initializes to 5 long, but only uses 3?
+    // initializes to 5 s32, but only uses 3?
     mBeams = new RingBeam*[5];
     for (int i = 0; i < 5; i++) {
         mBeams[i] = nullptr;

@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXFRAMEBUFFER_H
 #define GXFRAMEBUFFER_H
 
@@ -34,3 +37,4 @@ extern GXRenderModeObj GXEurgb60Hz480IntDf;
 #endif
 
 #endif // GXFRAMEBUFFER_H
+#endif  // TARGET_PC && PORT_AURORA

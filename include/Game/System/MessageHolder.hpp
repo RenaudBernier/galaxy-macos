@@ -6,30 +6,31 @@ class JMapInfo;
 class TalkMessageInfo;
 class TalkNode;
 
+// BMG message file blocks; big-endian file data.
 struct MessageInfoBlock {
-    u32 mMagic;
-    u32 mBlockSize;
-    u16 mItemCount;
-    u16 mItemSize;
-    u32 _C;
+    BE(u32) mMagic;
+    BE(u32) mBlockSize;
+    BE(u16) mItemCount;
+    BE(u16) mItemSize;
+    BE(u32) _C;
 };
 
 struct MessageDataBlock {
-    u32 mMagic;
-    u32 mBlockSize;
+    BE(u32) mMagic;
+    BE(u32) mBlockSize;
 };
 
 struct MessageFlowBlock {
-    u32 mMagic;
-    u32 mBlockSize;
-    u16 mNodeCount;
-    u16 _A;
-    u32 _C;
+    BE(u32) mMagic;
+    BE(u32) mBlockSize;
+    BE(u16) mNodeCount;
+    BE(u16) _A;
+    BE(u32) _C;
 };
 
 struct MessageFLI1Block {
-    u32 mMagic;
-    u32 mBlockSize;
+    BE(u32) mMagic;
+    BE(u32) mBlockSize;
 };
 
 class MessageData {
@@ -50,7 +51,7 @@ public:
     MessageDataBlock* mDataBlock;  // 0x8
     u32 _C;
     MessageFlowBlock* mFlowBlock;  // 0x10
-    u16* _14;
+    BE(u16)* _14;
     u8* _18;
     MessageFLI1Block* mFLI1Block;  // 0x1C
 };
@@ -78,8 +79,8 @@ public:
     struct FlowNodeEvent {
         /* 0x00 */ u8 mFlowType;
         /* 0x01 */ u8 mEventType;
-        /* 0x02 */ u16 mBranchID;
-        /* 0x04 */ u32 mArg;
+        /* 0x02 */ BE(u16) mBranchID;
+        /* 0x04 */ BE(u32) mArg;
     };
 
     static bool getSystemMessageDirect(TalkMessageInfo*, const char*);

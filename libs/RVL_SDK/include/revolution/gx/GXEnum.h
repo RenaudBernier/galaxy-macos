@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXENUM_H
 #define GXENUM_H
 
@@ -930,3 +933,4 @@ typedef enum _GXDistAttnFn {
 #endif
 
 #endif // GXENUM_H
+#endif  // TARGET_PC && PORT_AURORA

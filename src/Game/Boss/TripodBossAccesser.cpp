@@ -161,7 +161,7 @@ namespace MR {
     }
 
     u32 getTripodBossGravityHostID() {
-        return reinterpret_cast< u32 >(getTripodBossAccesser());
+        return PTR_TO_U32(getTripodBossAccesser());
     }
 
     void setTripodBossJointAttachBaseMatrix(const TPos3f& rPos, s32 id) {

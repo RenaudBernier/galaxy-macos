@@ -178,6 +178,7 @@ namespace std {
         return const_mem_fun1_t< Result, Type, Arg >(pFunction);
     }
 
+#ifndef TARGET_PC  // host C++17 libraries still provide these
     template < class Predicate >
     struct unary_negate : public unary_function< typename Predicate::argument_type, bool > {
         explicit unary_negate(const Predicate& rPredicate) : mPred(rPredicate) {
@@ -194,6 +195,8 @@ namespace std {
     unary_negate< Predicate > not1(const Predicate& rPredicate) {
         return unary_negate< Predicate >(rPredicate);
     }
+
+#endif
 
     template < class Arg, class Result >
     class pointer_to_unary_function : public unary_function< Arg, Result > {

@@ -46,10 +46,54 @@ void KCollisionServer::init(void* pData, const void* pMapData) {
     }
 }
 
+#ifdef TARGET_PC
+// Index into the prism array from an octree prism list (big-endian u16s; only
+// the index reads need converting, the zero terminator tests don't).
+#define KC_LIST_INDEX(pList) PortReadBE16(pList)
+
+namespace {
+    // Converts the parts of a KCL resource that are accessed as native data
+    // (header values, vertex positions, normals, prisms) to host byte order.
+    void swapKCLToHost(KCLFile* pFile) {
+        u8* base = reinterpret_cast< u8* >(pFile);
+        u32 offsets[4] = {pFile->mPosOffset, pFile->mNormOffset, pFile->mPrismOffset, pFile->mOctreeOffset};
+
+        // Extent of each array: up to the next array in file order.
+        u32 ends[3];
+        for (int i = 0; i < 3; i++) {
+            u32 end = 0xFFFFFFFF;
+            for (int j = 0; j < 4; j++) {
+                if (offsets[j] > offsets[i] && offsets[j] < end) {
+                    end = offsets[j];
+                }
+            }
+            ends[i] = end;
+        }
+
+        // mThickness, mMin, masks and shifts: ten 32-bit words at 0x10.
+        PortSwap32Array(base + 0x10, 10);
+        PortSwap32Array(base + offsets[0], (ends[0] - offsets[0]) / 4);
+        PortSwap32Array(base + offsets[1], (ends[1] - offsets[1]) / 4);
+
+        KC_PrismData* pPrism = reinterpret_cast< KC_PrismData* >(base + offsets[2]);
+        const u32 prismNum = (ends[2] - offsets[2]) / sizeof(KC_PrismData);
+        for (u32 i = 0; i < prismNum; i++, pPrism++) {
+            PortSwap32Array(&pPrism->mHeight, 1);
+            PortSwap16Array(&pPrism->mPositionIndex, 6);
+        }
+    }
+}  // namespace
+#else
+#define KC_LIST_INDEX(pList) (*(pList))
+#endif
+
 void KCollisionServer::setData(void* pData) {
     mFile = reinterpret_cast< KCLFile* >(pData);
 
     if (!isBinaryInitialized(pData)) {
+#ifdef TARGET_PC
+        swapKCLToHost(mFile);
+#endif
         mFile->mPos = reinterpret_cast< TVec3f* >(reinterpret_cast< u8* >(mFile) + mFile->mPosOffset);
         mFile->mNorms = reinterpret_cast< TVec3f* >(reinterpret_cast< u8* >(mFile) + mFile->mNormOffset);
         mFile->mPrisms = reinterpret_cast< KC_PrismData* >(reinterpret_cast< u8* >(mFile) + mFile->mPrismOffset);
@@ -92,7 +136,11 @@ bool KCollisionServer::calcFarthestVertexDistance() {
 }
 
 bool KCollisionServer::isBinaryInitialized(const void* pData) NO_INLINE {
+#ifdef TARGET_PC
+    return static_cast< s32 >(PortReadBE32(pData)) < 0;
+#else
     return reinterpret_cast< const s32* >(pData)[0] < 0;
+#endif
 }
 
 KC_PrismData* KCollisionServer::checkPoint(Fxyz* pPoint, f32 param, f32* pDist) {
@@ -119,7 +167,7 @@ KC_PrismData* KCollisionServer::checkPoint(Fxyz* pPoint, f32 param, f32* pDist) 
     u16* prismList = (u16*)searchBlock(&shift, x, y, z);
 
     while (*++prismList != 0) {
-        KC_PrismData* prism = &mFile->mPrisms[*prismList];
+        KC_PrismData* prism = &mFile->mPrisms[KC_LIST_INDEX(prismList)];
         f32 height = prism->mHeight;
 
         if (height <= 0.0f) {
@@ -249,7 +297,7 @@ u32 KCollisionServer::checkArea3D(Fxyz* pMin, Fxyz* pMax, KC_PrismData** pOut, u
 
                 if (skipList == nullptr || list != skipList) {
                     while (*++list != 0) {
-                        prism = &mFile->mPrisms[*list];
+                        prism = &mFile->mPrisms[KC_LIST_INDEX(list)];
 
                         if (prism->mHeight <= 0.0f) {
                             continue;
@@ -385,7 +433,7 @@ u32 KCollisionServer::checkSphere(Fxyz* pCenter, f32 radius, f32 param, u32 maxC
 
                 if (skipList == nullptr || list != skipList) {
                     while (*++list != 0) {
-                        prism = &mFile->mPrisms[*list];
+                        prism = &mFile->mPrisms[KC_LIST_INDEX(list)];
 
                         if (prism->mHeight <= 0.0f) {
                             continue;
@@ -499,7 +547,7 @@ u32 KCollisionServer::checkSphereWithThickness(Fxyz* pCenter, f32 radius, f32 pa
 
                 if (skipList == nullptr || list != skipList) {
                     while (*++list != 0) {
-                        prism = &mFile->mPrisms[*list];
+                        prism = &mFile->mPrisms[KC_LIST_INDEX(list)];
 
                         if (prism->mHeight <= 0.0f) {
                             continue;
@@ -701,7 +749,7 @@ searchStart:
         f32 dist = 1.0f;
 
         while (*++prismList != 0) {
-            KC_PrismData* prism = &mFile->mPrisms[*prismList];
+            KC_PrismData* prism = &mFile->mPrisms[KC_LIST_INDEX(prismList)];
 
             if (prism->mHeight <= 0.0f) {
                 continue;
@@ -1201,7 +1249,7 @@ edgeFinish: {
     *pDist = radiusSq - closestSq;
 }
 
-finish:
+finish: {
     f32 distance = MR::sqrt(*pDist);
 
     if (distances[0] + distance < 0.0f) {
@@ -1215,6 +1263,7 @@ finish:
         *pFlag = 0;
         return false;
     }
+}
 
 success:
     return true;
@@ -1413,7 +1462,7 @@ KC_PrismData* KCollisionServer::getPrismData(u32 index) const {
 }
 
 s32 KCollisionServer::getTriangleNum() const {
-    return (reinterpret_cast< u8* >(mFile->mOctree) - reinterpret_cast< u8* >(mFile->mPrisms + 1)) / sizeof(KC_PrismData);
+    return (static_cast< u8* >(static_cast< void* >(mFile->mOctree)) - reinterpret_cast< u8* >(mFile->mPrisms + 1)) / sizeof(KC_PrismData);
 }
 
 JMapInfoIter KCollisionServer::getAttributes(u32 index) const {
@@ -1424,18 +1473,29 @@ JMapInfoIter KCollisionServer::getAttributes(u32 index) const {
 
 s32* KCollisionServer::searchBlock(s32* pShift, const u32& rX, const u32& rY, const u32& rZ) const {
     KCLFile* file = mFile;
-    u8* octree = reinterpret_cast< u8* >(file->mOctree);
+    u8* octree = static_cast< u8* >(static_cast< void* >(file->mOctree));
     s32 blockWidthShift = *pShift = file->mBlockWidthShift;
 
     s32 xyShift = file->mBlockXYShift;
     s32 xShift = file->mBlockXShift;
+#ifdef TARGET_PC
+    // PowerPC shifts (slw) by 32..63 give 0; the shifts are -1 for axes one
+    // block wide, which arm64 would take as 31.
+    auto slw = [](u32 value, s32 amount) -> u32 { return (amount & 0x20) ? 0 : value << (amount & 0x1F); };
+    s32 offset = (slw(rZ >> blockWidthShift, xyShift) | slw(rY >> blockWidthShift, xShift) | (rX >> blockWidthShift)) * 4;
+#else
     s32 offset = (((rZ >> blockWidthShift) << xyShift) | ((rY >> blockWidthShift) << xShift) | (rX >> blockWidthShift)) * 4;
+#endif
 
     if (xyShift == -1 && xShift == -1) {
         offset = 0;
     }
 
+#ifdef TARGET_PC
+    while ((offset = static_cast< s32 >(PortReadBE32(octree + offset))) >= 0) {
+#else
     while ((offset = *reinterpret_cast< s32* >(octree + offset)) >= 0) {
+#endif
         octree += offset;
         (*pShift)--;
         s32 shift = *pShift;

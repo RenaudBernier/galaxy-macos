@@ -10,6 +10,10 @@
 #include "JSystem/JAudio2/JASTrackPort.hpp"
 #include "JSystem/JGadget/linklist.hpp"
 
+#ifdef TARGET_PC
+#define JAS_TRACK_NODE_OFFSET 0x318
+#endif
+
 class JASSoundParams;
 class JASChannel;
 class JASDefaultBankTable;
@@ -48,7 +52,12 @@ struct JASTrack : public JASPoolAllocObject_MultiThreaded< JASTrack > {
     };
 
     struct TList {
+#ifdef TARGET_PC
+        // offsetof(JASTrack, mNode) on 64-bit hosts (checked below the class).
+        typedef JGadget::TLinkList< JASTrack, -JAS_TRACK_NODE_OFFSET > TrackList;
+#else
         typedef JGadget::TLinkList< JASTrack, -0x248 > TrackList;
+#endif
         typedef TrackList::iterator iterator;
         TList() : mCallbackRegistered() {
         }
@@ -401,3 +410,7 @@ struct JASTrack : public JASPoolAllocObject_MultiThreaded< JASTrack > {
     };
     /* 0x248 */ JGadget::TLinkListNode mNode;
 };
+
+#ifdef TARGET_PC
+static_assert(offsetof(JASTrack, mNode) == JAS_TRACK_NODE_OFFSET, "update JAS_TRACK_NODE_OFFSET");
+#endif

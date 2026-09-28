@@ -31,6 +31,9 @@ void OSTicksToCalendarTime(OSTime, OSCalendarTime*);
 
 #ifdef __MWERKS__
 vu32 OS_BUS_CLOCK_SPEED : 0x800000F8;
+#elif defined(TARGET_PC)
+// The Wii reads the bus clock from low memory; the host uses its fixed value.
+#define OS_BUS_CLOCK_SPEED 243000000u
 #else
 vu32 OS_BUS_CLOCK_SPEED;
 #endif

@@ -2,11 +2,12 @@
 
 #include <revolution/types.h>
 
+// Speaker table entries; big-endian file data.
 struct SpkParameters {
-    /* 0x00 */ u16 mWaveID;
+    /* 0x00 */ BE(u16) mWaveID;
     /* 0x02 */ u8 _2;
     /* 0x03 */ u8 mVolume;
-    /* 0x04 */ u16 mReleaseTime;
+    /* 0x04 */ BE(u16) mReleaseTime;
     /* 0x06 */ u16 _padding;  // (?)
 };
 
@@ -30,5 +31,5 @@ public:
     /* 0x0 */ bool mInitialized;
     /* 0x4 */ s32 mResourceCount;
     /* 0x8 */ SpkParameters* mParameters;
-    /* 0xC */ const char** mNames;
+    /* 0xC */ PTR32(const char)* mNames;  // 4-byte slots inside the resource
 };

@@ -1,6 +1,20 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#ifdef TARGET_PC
+// Host build: the Wii is ILP32, so `long` is 32 bits there. On LP64 hosts it is
+// 64 bits, so fixed-width types are required to keep struct layouts intact.
+#include <stdint.h>
+#include <stddef.h>
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+#else
 typedef signed char s8;
 typedef signed short s16;
 typedef signed long s32;
@@ -9,6 +23,20 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned long u32;
 typedef unsigned long long u64;
+#endif
+
+// Pointer <-> 32-bit address conversions. Plain casts on the Wii; on 64-bit
+// hosts they translate through the emulated Wii address window.
+#ifdef TARGET_PC
+#include <port/wii_addr.h>
+#include <port/endian.h>
+#else
+#define PTR_TO_U32(p) ((u32)(p))
+#define U32_TO_PTR(T, a) ((T)(a))
+// File-data field annotations; plain types on the Wii (see port/include/port).
+#define BE(T) T
+#define PTR32(T) T*
+#endif
 
 typedef volatile u8 vu8;
 typedef volatile u16 vu16;
@@ -34,13 +62,13 @@ typedef int BOOL;
 #endif
 #endif
 
-#ifndef nullptr
+#if !defined(TARGET_PC) && !defined(nullptr)
 #ifdef __cplusplus
 #define nullptr 0
 #endif
 #endif
 
-#ifndef override
+#if !defined(TARGET_PC) && !defined(override)
 #ifdef __cplusplus
 #define override
 #endif
@@ -75,6 +103,11 @@ typedef int BOOL;
 
 #if __MWERKS__
 #define ATTRIBUTE_ALIGN(num) __attribute__((aligned(num)))
+#elif defined(TARGET_PC)
+// Host builds need real alignment (GPU buffers, 32-byte DMA-style copies).
+#ifndef ATTRIBUTE_ALIGN
+#define ATTRIBUTE_ALIGN(num) __attribute__((aligned(num)))
+#endif
 #else
 #define ATTRIBUTE_ALIGN(num)
 #endif
@@ -85,7 +118,7 @@ typedef int BOOL;
 #define ATTRIBUTE_PACKED
 #endif
 
-#if __MWERKS__
+#if __MWERKS__ || defined(TARGET_PC)
 #define ATTRIBUTE_WEAK __attribute__((weak))
 #else
 #define ATTRIBUTE_WEAK

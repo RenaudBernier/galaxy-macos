@@ -208,8 +208,17 @@ void CShader::setup(J3DModelData* pData) {
 }
 
 namespace {
+    // Shape display lists stay big-endian (the GPU layer parses them).
+    inline u16 readDL16(const u8* p) {
+#ifdef TARGET_PC
+        return PortReadBE16(p);
+#else
+        return *reinterpret_cast< const u16* >(p);
+#endif
+    }
+
     inline s32 getCount(u8* pRead) {
-        return *reinterpret_cast< u16* >(pRead + 1);
+        return readDL16(pRead + 1);
     }
 }
 
@@ -266,9 +275,9 @@ void CShader::makeIndexData(J3DShape* pShape) const {
 
             for (s32 i = 0; i < count; i++) {
                 u8* pVertex = pRead + 3 + stride * i;
-                u16 pos = *reinterpret_cast< u16* >(pVertex + posOffset);
-                u16 nrm = *reinterpret_cast< u16* >(pVertex + nrmOffset);
-                u16 tex = *reinterpret_cast< u16* >(pVertex + texOffset);
+                u16 pos = readDL16(pVertex + posOffset);
+                u16 nrm = readDL16(pVertex + nrmOffset);
+                u16 tex = readDL16(pVertex + texOffset);
                 mIndexArray[pos]._0 = nrm;
                 mIndexArray[pos]._2 = tex;
             }
@@ -323,10 +332,10 @@ void CShader::checkBorderVtx(J3DModelData* pData, u32 shapeIndex) {
                     break;
                 }
 
-                s32 count = *reinterpret_cast< u16* >(pRead + 1);
+                s32 count = readDL16(pRead + 1);
 
                 for (s32 i = 0; i < count; i++) {
-                    u16 pos = *reinterpret_cast< u16* >((pRead + stride * i) + (posOffset + 3));
+                    u16 pos = readDL16((pRead + stride * i) + (posOffset + 3));
                     mIndexArray[pos]._0 = 0xFFFF;
                     mIndexArray[pos]._2 = 0xFFFF;
                 }

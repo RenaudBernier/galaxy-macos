@@ -1,6 +1,6 @@
 #include "RVLFaceLibInternal.h"
 #include <revolution/NAND.h>
-#include <cstdio>
+#include <stdio.h>
 
 #define LOADER_HEADER_BUF_1_SIZE 0x100
 #define LOADER_HEADER_BUF_2_SIZE 0x20

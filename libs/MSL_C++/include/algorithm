@@ -3,6 +3,14 @@
 
 #include <functional.hpp>
 
+// The pivot selection in sort() depends on the iterator size. Game iterators
+// are raw pointers, 4 bytes on the Wii; keep that on 64-bit hosts.
+#ifdef TARGET_PC
+#define MSL_ITER_SIZEOF(T) 4
+#else
+#define MSL_ITER_SIZEOF(T) sizeof(T)
+#endif
+
 namespace std {
 
     template < typename T >
@@ -177,13 +185,13 @@ namespace std {
             }
 
             static int shuffle = -4;
-            TIt m = first + (len / static_cast< long >(sizeof(TIt)) + shuffle % SHUFFLE_MAX);
+            TIt m = first + (len / static_cast< long >(MSL_ITER_SIZEOF(TIt)) + shuffle % SHUFFLE_MAX);
 
             if (++shuffle >= SHUFFLE_MAX) {
                 shuffle = SHUFFLE_MIN;
             }
 
-            TIt i1 = first + (len * static_cast< long >(sizeof(TIt) - 1) / static_cast< long >(sizeof(TIt)) + shuffle % SHUFFLE_MAX);
+            TIt i1 = first + (len * static_cast< long >(MSL_ITER_SIZEOF(TIt) - 1) / static_cast< long >(MSL_ITER_SIZEOF(TIt)) + shuffle % SHUFFLE_MAX);
 
             if (++shuffle >= SHUFFLE_MAX) {
                 shuffle = SHUFFLE_MIN;

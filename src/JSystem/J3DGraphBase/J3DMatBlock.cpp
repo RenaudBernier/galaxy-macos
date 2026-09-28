@@ -6,16 +6,23 @@
 #include "JSystem/J3DGraphBase/J3DTransform.hpp"
 #include <cstdio>
 
+// GXColor bytes (r, g, b, a) as the big-endian word the XF register expects.
+#ifdef TARGET_PC
+#define J3D_COLOR_U32(c) PortReadBE32(c)
+#else
+#define J3D_COLOR_U32(c) (*(u32*)(c))
+#endif
+
 inline void loadMatColors(const J3DGXColor* color) {
     J3DGDWriteXFCmdHdr(0x100C, 2);
-    J3DGDWrite_u32(*(u32*)color);
-    J3DGDWrite_u32(*(u32*)(color + 1));
+    J3DGDWrite_u32(J3D_COLOR_U32(color));
+    J3DGDWrite_u32(J3D_COLOR_U32(color + 1));
 }
 
 inline void loadAmbColors(const J3DGXColor* color) {
     J3DGDWriteXFCmdHdr(0x100A, 2);
-    J3DGDWrite_u32(*(u32*)color);
-    J3DGDWrite_u32(*(u32*)(color + 1));
+    J3DGDWrite_u32(J3D_COLOR_U32(color));
+    J3DGDWrite_u32(J3D_COLOR_U32(color + 1));
 }
 
 inline void loadTevColor(u32 reg, const J3DGXColorS10& color) {

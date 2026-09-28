@@ -88,7 +88,7 @@ void Syati::init(const JMapInfoIter& rIter) {
     MR::calcModelBoundingRadius(&mClippingRange, this);
     MR::setClippingTypeSphere(this, mClippingRange);
     MR::validateClipping(this);
-    initEffectKeeper(1, nullptr, nullptr);
+    initEffectKeeper(1, nullptr, false);
 
     if (mSwimMode) {
         MR::initEffectSyncBck(this, "Ripple", ::cBckForRipple);
@@ -593,7 +593,7 @@ void Syati::updateBlink() {
     if (mBlinkTimer < 0) {
         MR::startBva(this, "Blink");
         s16 frame = MR::getBvaCtrl(this)->mEnd;
-        u32 rand = MR::getRandom(0x78L, 0xF0L);
+        u32 rand = MR::getRandom((s32)0x78, (s32)0xF0);
         mBlinkTimer = frame + rand;
     } else if (MR::isBvaStopped(this)) {
         MR::startBva(this, "Open");

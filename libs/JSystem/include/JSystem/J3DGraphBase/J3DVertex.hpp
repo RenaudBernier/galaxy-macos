@@ -53,6 +53,10 @@ public:
         return mVtxNBTArray;
     }
 
+    u32 getColNum() const {
+        return mColNum;
+    }
+
     u32 getNrmNum() const {
         return mNrmNum;
     }
@@ -97,6 +101,14 @@ public:
         mVtxNrmType = type;
     }
 
+#ifdef TARGET_PC
+    // Byte size of an attribute array in the model file: Aurora needs the
+    // extent of every vertex array.
+    u32 getVtxArrSize(GXAttr attr) const {
+        return mVtxArrSize[attr == GX_VA_NBT ? 12 : attr - GX_VA_POS];
+    }
+#endif
+
     friend class J3DModelLoader;
 
     /* 0x00 */ u32 mVtxNum;
@@ -114,6 +126,10 @@ public:
     /* 0x50 */ GXCompType mVtxPosType;
     /* 0x54 */ u8 mVtxNrmFrac;
     /* 0x58 */ GXCompType mVtxNrmType;
+#ifdef TARGET_PC
+    // Indexed by attr - GX_VA_POS, NBT last.
+    u32 mVtxArrSize[13];
+#endif
 };
 
 class J3DVertexBuffer {

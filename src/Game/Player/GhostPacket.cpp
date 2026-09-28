@@ -16,12 +16,19 @@ void GhostPacket::read(u8* pOut, u32 len) {
     }
 }
 
+// Ghost recordings (.gst) are big-endian.
 void GhostPacket::read(u32* pOut) {
     read((u8*)pOut, 4);
+#ifdef TARGET_PC
+    *pOut = __builtin_bswap32(*pOut);
+#endif
 }
 
 void GhostPacket::read(s16* pOut) {
     read((u8*)pOut, 2);
+#ifdef TARGET_PC
+    *pOut = (s16)__builtin_bswap16((u16)*pOut);
+#endif
 }
 
 void GhostPacket::read(char** pOut) {
@@ -42,7 +49,7 @@ void GhostPacket::read(TVec3Sc* pOut) {
 }
 
 void GhostPacket::read(TVec3s* pOut) {
-    read((u8*)&pOut->x, 2);
-    read((u8*)&pOut->y, 2);
-    read((u8*)&pOut->z, 2);
+    read(&pOut->x);
+    read(&pOut->y);
+    read(&pOut->z);
 }

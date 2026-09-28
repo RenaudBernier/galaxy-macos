@@ -57,10 +57,15 @@ bool JMapInfo::getValueFast(int entryIndex, int itemIndex, const char** pValueOu
     const char* valuePtr = getEntryAddress(mData, mData->mDataOffset, entryIndex) + item->mOffsData;
 
     switch (item->mType) {
-    case JMAP_VALUE_TYPE_STRING_PTR:
+    case JMAP_VALUE_TYPE_STRING_PTR: {
         const char* pStringTable = getEntryAddress(mData, mData->mDataOffset, getNumEntries());
+#ifdef TARGET_PC
+        *pValueOut = pStringTable + PortReadBE32(valuePtr);
+#else
         *pValueOut = pStringTable + *reinterpret_cast< const u32* >(valuePtr);
+#endif
         break;
+    }
     default:
         *pValueOut = valuePtr;
         break;
@@ -75,6 +80,15 @@ bool JMapInfo::getValueFast(int entryIndex, int itemIndex, u32* pValueOut) const
 
     u32 rawValue;
     switch (item->mType) {
+#ifdef TARGET_PC
+    case JMAP_VALUE_TYPE_LONG:
+    case JMAP_VALUE_TYPE_LONG_2:
+        rawValue = PortReadBE32(valuePtr);
+        break;
+    case JMAP_VALUE_TYPE_SHORT:
+        rawValue = PortReadBE16(valuePtr);
+        break;
+#else
     case JMAP_VALUE_TYPE_LONG:
     case JMAP_VALUE_TYPE_LONG_2:
         rawValue = *reinterpret_cast< const u32* >(valuePtr);
@@ -82,6 +96,7 @@ bool JMapInfo::getValueFast(int entryIndex, int itemIndex, u32* pValueOut) const
     case JMAP_VALUE_TYPE_SHORT:
         rawValue = *reinterpret_cast< const u16* >(valuePtr);
         break;
+#endif
     case JMAP_VALUE_TYPE_BYTE:
         rawValue = *reinterpret_cast< const u8* >(valuePtr);
         break;
@@ -95,21 +110,30 @@ bool JMapInfo::getValueFast(int entryIndex, int itemIndex, u32* pValueOut) const
 
 bool JMapInfo::getValueFast(int entryIndex, int itemIndex, s32* pValueOut) const {
     const JMapItem* item = &mData->mItems[itemIndex];
+    const char* valuePtr;
     if (item->mShift != 0) {
         goto FAIL;
     }
-    const char* valuePtr = getEntryAddress(mData, mData->mDataOffset, entryIndex) + item->mOffsData;
+    valuePtr = getEntryAddress(mData, mData->mDataOffset, entryIndex) + item->mOffsData;
 
     switch (item->mType) {
     case JMAP_VALUE_TYPE_LONG:
         if (item->mMask == 0xffffffff) {
+#ifdef TARGET_PC
+            *pValueOut = (s32)PortReadBE32(valuePtr);
+#else
             *pValueOut = *reinterpret_cast< const s32* >(valuePtr);
+#endif
             break;
         }
         goto FAIL;
     case JMAP_VALUE_TYPE_SHORT:
         if (item->mMask == 0xffff) {
+#ifdef TARGET_PC
+            *pValueOut = (s16)PortReadBE16(valuePtr);
+#else
             *pValueOut = *reinterpret_cast< const s16* >(valuePtr);
+#endif
             break;
         }
         goto FAIL;

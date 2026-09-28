@@ -20,6 +20,12 @@ inline f32 JMAFastSqrt(__REGISTER const f32 input) {
     } else {
         return input;
     }
+#else
+    if (input > 0.0f) {
+        return (1.0f / __builtin_sqrtf(input)) * input;
+    } else {
+        return input;
+    }
 #endif
 }
 
@@ -52,6 +58,22 @@ inline f32 JMAHermiteInterpolation(__REGISTER f32 p1, __REGISTER f32 p2, __REGIS
     }
     // clang-format on
     return ff25;
+#else
+    // Same sequence as the asm; fmsubs/fmadds/fnmsubs are fused.
+    const f32 ff31 = p1 - p2;
+    f32 ff30 = p5 - p2;
+    const f32 ff29 = ff31 / ff30;
+    const f32 ff28 = ff29 * ff29;
+    f32 ff25 = ff29 + ff29;
+    const f32 ff27 = ff28 - ff29;
+    ff30 = p3 - p6;
+    f32 ff26 = __builtin_fmaf(ff25, ff27, -ff28);
+    ff25 = __builtin_fmaf(p4, ff27, p4);
+    ff26 = __builtin_fmaf(ff26, ff30, p3);
+    ff25 = __builtin_fmaf(p7, ff27, ff25);
+    ff25 = __builtin_fmaf(ff29, p4, -ff25);
+    ff25 = -__builtin_fmaf(ff31, ff25, -ff26);
+    return ff25;
 #endif
 }
 
@@ -81,6 +103,8 @@ namespace JMath {
             psq_st x, 0(dest), 0, 0
             stfs y, 8(dest)
         }
+#else
+        __builtin_memcpy(dest, src, 3 * sizeof(f32));
 #endif
     }
 
@@ -95,6 +119,8 @@ namespace JMath {
             psq_st y, 8(dest), 0, 0
             psq_st z, 16(dest), 0, 0
         }
+#else
+        __builtin_memcpy(dest, src, 6 * sizeof(f32));
 #endif
     }
 
@@ -117,6 +143,8 @@ namespace JMath {
                 psq_st    f_5, 0x28(pDest), 0, 0
         }
         ;
+#else
+        __builtin_memcpy(pDest, pSrc, 12 * sizeof(f32));
 #endif
     }
 
@@ -143,6 +171,8 @@ namespace JMath {
                 psq_st    f_7, 0x38(pDest), 0, 0
         }
         ;
+#else
+        __builtin_memcpy(pDest, pSrc, 16 * sizeof(f32));
 #endif
     }
 };  // namespace JMath
@@ -262,6 +292,56 @@ namespace JMathInlineVEC {
         }
 
         return sqdist;
+    }
+#elif defined(TARGET_PC)
+    // Host versions of the paired-single routines above, with the same
+    // operation order (ps_madd is fused, ps_sum0 adds the remaining term).
+    inline f32 PSVECDotProduct(const Vec* pA, const Vec* pB) {
+        return __builtin_fmaf(pA->x, pB->x, pA->y * pB->y) + pA->z * pB->z;
+    }
+
+    inline void PSVECCopy(const Vec* src, Vec* dest) {
+        const f32 x = src->x, y = src->y, z = src->z;
+        dest->z = z;
+        dest->x = x;
+        dest->y = y;
+    }
+
+    inline void PSVECAdd(const Vec* vec1, const Vec* vec2, Vec* dst) {
+        const f32 x = vec1->x + vec2->x, y = vec1->y + vec2->y;
+        dst->x = x;
+        dst->y = y;
+        dst->z = vec1->z + vec2->z;
+    }
+
+    inline void PSVECSubtract(const Vec* vec1, const Vec* vec2, Vec* dst) {
+        const f32 x = vec1->x - vec2->x, y = vec1->y - vec2->y;
+        dst->x = x;
+        dst->y = y;
+        dst->z = vec1->z - vec2->z;
+    }
+
+    inline void PSVECMultiply(const Vec* vec1, const Vec* vec2, Vec* dst) {
+        const f32 x = vec1->x * vec2->x, y = vec1->y * vec2->y;
+        dst->x = x;
+        dst->y = y;
+        dst->z = vec1->z * vec2->z;
+    }
+
+    inline f32 PSVECSquareMag(const Vec* src) {
+        return __builtin_fmaf(src->z, src->z, src->x * src->x) + src->y * src->y;
+    }
+
+    inline void PSVECNegate(const Vec* src, Vec* dst) {
+        const f32 x = -src->x, y = -src->y;
+        dst->x = x;
+        dst->y = y;
+        dst->z = -src->z;
+    }
+
+    inline f32 PSVECSquareDistance(const Vec* a, const Vec* b) {
+        const f32 dx = a->x - b->x, dy = a->y - b->y, dz = a->z - b->z;
+        return __builtin_fmaf(dx, dx, dy * dy) + dz * dz;
     }
 #else
     void PSVECCopy(const Vec*, Vec*);

@@ -2,6 +2,7 @@
 #include "JSystem/JAudio2/JASCalc.hpp"
 #include "JSystem/JAudio2/JASCriticalSection.hpp"
 #include "JSystem/JKernel/JKRSolidHeap.hpp"
+#include <cstddef>
 
 JASTaskThread::JASTaskThread(int priority, int msgCount, u32 stackSize) : JKRThread(JASDram, stackSize, msgCount, priority) {
     _84 = false;
@@ -22,7 +23,11 @@ JASTaskThread::~JASTaskThread() {
 
 void* JASTaskThread::allocCallStack(JASThreadCallback callback, const void* msg, u32 msgSize) {
     ThreadMemPool* heap;
+#ifdef TARGET_PC
+    u32 size = msgSize + offsetof(JASThreadCallStack, msg);
+#else
     u32 size = msgSize + 8;
+#endif
     JASThreadCallStack* callStack = (JASThreadCallStack*)JASKernel::getCommandHeap()->alloc(size);
     if (callStack == NULL) {
         return NULL;
@@ -36,7 +41,11 @@ void* JASTaskThread::allocCallStack(JASThreadCallback callback, const void* msg,
 
 void* JASTaskThread::allocCallStack(JASThreadCallback callback, void* msg) {
     JASThreadCallStack* callStack;
+#ifdef TARGET_PC
+    callStack = (JASThreadCallStack*)JASKernel::getCommandHeap()->alloc(offsetof(JASThreadCallStack, msg) + sizeof(void*));
+#else
     callStack = (JASThreadCallStack*)JASKernel::getCommandHeap()->alloc(12);
+#endif
     if (callStack == NULL) {
         return NULL;
     }

@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXDISPLIST_H
 #define GXDISPLIST_H
 
@@ -16,3 +19,4 @@ void GXCallDisplayList(const void *, u32);
 #endif
 
 #endif // GXDISPLIST_H
+#endif  // TARGET_PC && PORT_AURORA

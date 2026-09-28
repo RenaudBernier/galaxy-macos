@@ -386,7 +386,13 @@ void CustomTagProcessor::setArgString(const wchar_t* string, s32 index) {
             break;
         }
 
+#ifdef TARGET_PC
+        // The parameter slot is 4 bytes; store the string as a Wii address.
+        const u32 addr = PTR_TO_U32(string);
+        memcpy(tag.getParamPtr(0), &addr, sizeof(addr));
+#else
         *reinterpret_cast< const wchar_t** >(tag.getParamPtr(0)) = string;
+#endif
     }
 }
 
@@ -594,11 +600,21 @@ CustomTagProcessor::Operation CustomTagProcessor::exeNumberGroup(nw4r::ut::Rect*
 }
 
 CustomTagProcessor::Operation CustomTagProcessor::exeStringGroup(nw4r::ut::Rect* rect, const MessageEditorMessageTag& tag, ContextType* context) {
+#ifdef TARGET_PC
+    u32 addr;
+    memcpy(&addr, tag.getParamPtr(0), sizeof(addr));
+    if (addr == 0) {
+        return OPERATION_DEFAULT;
+    }
+
+    writeString(rect, U32_TO_PTR(const wchar_t*, addr), context);
+#else
     if (!*reinterpret_cast< const u8* >(tag.getParamPtr(0))) {
         return OPERATION_DEFAULT;
     }
 
     writeString(rect, *reinterpret_cast< const wchar_t** >(tag.getParamPtr(0)), context);
+#endif
     return OPERATION_DEFAULT;
 }
 

@@ -2,6 +2,11 @@
 #include "JSystem/J2DGraph/J2DAnimation.hpp"
 #include <cmath>
 
+#if defined(TARGET_PC) && !defined(DEG_TO_RAD)
+// MSL <cmath> provides this on the Wii.
+#define DEG_TO_RAD(degrees) (degrees * (3.14159265358979323846f / 180.0f))
+#endif
+
 J2DPane::J2DPane() : mBounds(), mGlobalBounds(), mClipRect(), mPaneTree(this) {
     mTransform = NULL;
     mKind = 'PAN1';

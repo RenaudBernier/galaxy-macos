@@ -41,7 +41,13 @@ namespace nw4r {
             if (pBlock->textStrBytes >= sizeof(wchar_t) && mTextBuf) {
                 const wchar_t* const pBlockText = detail::ConvertOffsToPtr< wchar_t >(pBlock, pBlock->textStrOffset);
                 const u16 resStrLen = static_cast< u16 >(pBlock->textStrBytes / sizeof(wchar_t) - 1);
+#ifdef TARGET_PC
+                // The resource text is UTF-16BE; convert the copy to host order.
+                const u16 copied = SetString(pBlockText, 0, resStrLen);
+                PortSwap16Array(mTextBuf, copied);
+#else
                 SetString(pBlockText, 0, resStrLen);
+#endif
             }
 
             for (int i = 0; i < 2; ++i) {
@@ -68,7 +74,7 @@ namespace nw4r {
             }
 
             if (void* pMem = Layout::AllocMemory(sizeof(Material))) {
-                const u32* const matOffsTbl = detail::ConvertOffsToPtr< u32 >(resBlockSet.pMaterialList, sizeof(*resBlockSet.pMaterialList));
+                const BE(u32)* const matOffsTbl = detail::ConvertOffsToPtr< BE(u32) >(resBlockSet.pMaterialList, sizeof(*resBlockSet.pMaterialList));
                 const res::Material* const pResMaterial =
                     detail::ConvertOffsToPtr< res::Material >(resBlockSet.pMaterialList, matOffsTbl[pBlock->materialIdx]);
                 mpMaterial = new (pMem) Material(pResMaterial, resBlockSet);

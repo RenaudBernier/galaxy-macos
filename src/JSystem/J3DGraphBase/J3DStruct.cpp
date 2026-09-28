@@ -25,6 +25,12 @@ void J3DTexMtxInfo::setEffectMtx(Mtx param_0) {
     ;
     mEffectMtx[3][2] = kIdentityZero;
     mEffectMtx[3][3] = kIdentityW;
+#else
+    JMath::gekko_ps_copy12(&mEffectMtx, param_0);
+    mEffectMtx[3][0] = kIdentityZero;
+    mEffectMtx[3][1] = kIdentityZero;
+    mEffectMtx[3][2] = kIdentityZero;
+    mEffectMtx[3][3] = kIdentityW;
 #endif
 }
 

@@ -31,7 +31,16 @@ GameSystemObjHolder::GameSystemObjHolder()
     initDvd();
     initNAND();
     initNameObj();
+#ifdef TARGET_PC
+    // The archive is patched in place once mounted (resource pointers, byte
+    // order); the Wii has no write protection on const data, the host does.
+    // Mount a writable copy.
+    void* pErrorArchive = new (MR::getStationedHeapNapa(), 32) u8[sizeof(cErrorArchive)];
+    memcpy(pErrorArchive, cErrorArchive, sizeof(cErrorArchive));
+    MR::createAndAddArchive(pErrorArchive, MR::getStationedHeapNapa(), "ErrorMessageArchive.arc");
+#else
     MR::createAndAddArchive((void*)cErrorArchive, MR::getStationedHeapNapa(), "ErrorMessageArchive.arc");
+#endif
 }
 
 void GameSystemObjHolder::initAfterStationedResourceLoaded() {

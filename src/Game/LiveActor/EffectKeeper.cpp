@@ -174,7 +174,7 @@ MultiEmitter* EffectKeeper::getEmitter(const char* pParam1) const {
         u32 result = 0;
 
         if (_18->search(pParam1, &result)) {
-            return reinterpret_cast< MultiEmitter* >(result);
+            return U32_TO_PTR(MultiEmitter*, result);
         }
     }
 
@@ -346,11 +346,11 @@ void EffectKeeper::registMultiEmitter(MultiEmitter* pEmitter, const char* pParam
         pEmitter->setName(pParam3);
 
         if (_18 != nullptr) {
-            _18->add(pParam3, reinterpret_cast< u32 >(pEmitter), 0);
+            _18->add(pParam3, PTR_TO_U32(pEmitter), 0);
         }
     } else {
         if (_18 != nullptr) {
-            _18->add(pParam2, reinterpret_cast< u32 >(pEmitter), 0);
+            _18->add(pParam2, PTR_TO_U32(pEmitter), 0);
         }
     }
 

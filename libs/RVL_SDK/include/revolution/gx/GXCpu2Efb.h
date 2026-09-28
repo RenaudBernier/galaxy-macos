@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXCPU2EFB_H
 #define GXCPU2EFB_H
 
@@ -24,3 +27,4 @@ void GXPeekZ(u16 x, u16 y, u32* z);
 #endif
 
 #endif  // GXCPU2EFB_H
+#endif  // TARGET_PC && PORT_AURORA

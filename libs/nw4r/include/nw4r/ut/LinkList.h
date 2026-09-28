@@ -53,7 +53,7 @@ namespace nw4r {
             class LinkListImpl : private NonCopyable {
             public:
                 typedef LinkListImpl Self;
-                typedef unsigned long size_type;
+                typedef u32 size_type;
                 typedef PtrDiff difference_type;
                 typedef LinkListNode Node;
                 typedef Node value_type;
@@ -206,7 +206,7 @@ namespace nw4r {
 
                 void Clear();
 
-                unsigned long mSize;
+                u32 mSize;
                 LinkListNode mNode;
             };
         };  // namespace detail
@@ -337,7 +337,7 @@ namespace nw4r {
 
                 TItC_base_ it_;
 
-                friend class Self;
+                friend Self;
             };
             explicit LinkList() {
             }
@@ -378,7 +378,7 @@ namespace nw4r {
                 return Iterator(Base::Erase(GetNodeFromPointer(p)));
             }
 
-            unsigned long GetSize() const {
+            u32 GetSize() const {
                 return mSize;
             }
 

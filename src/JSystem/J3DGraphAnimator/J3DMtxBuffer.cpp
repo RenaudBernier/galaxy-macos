@@ -177,6 +177,53 @@ s32 J3DMtxBuffer::createBumpMtxArray(J3DModelData* i_modelData, u32 mtxNum) {
 
 static f32 J3DUnit01[] = {0.0f, 1.0f};
 
+#ifdef TARGET_PC
+// Host version of the paired-single loop below: for every envelope matrix,
+// sum weight * (worldMtx * invJointMtx) over its mixed joints, using fused
+// multiply-adds in the same order as the original.
+void J3DMtxBuffer::calcWeightEnvelopeMtx() {
+    int max = mJointTree->getWEvlpMtxNum();
+    u16* indices = mJointTree->getWEvlpMixMtxIndex();
+    f32* weights = mJointTree->getWEvlpMixWeight();
+
+    for (int i = 0; i < max; i++) {
+        u8* pScale = &mpEvlpScaleFlagArr[i];
+        *pScale = 1;
+        MtxPtr weightAnmMtx = mpWeightEvlpMtx[i];
+        f32 acc[3][4] = {{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 0.0f}};
+
+        int j = 0;
+        int mixNum = mJointTree->getWEvlpMixMtxNum(i);
+        do {
+            int idx = *indices++;
+            MtxPtr invMtx = mJointTree->getInvJointMtx((u16)idx);
+            MtxPtr worldMtx = mpAnmMtx[idx];
+            f32 weight = *weights++;
+
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 4; c++) {
+                    f32 t = invMtx[0][c] * worldMtx[r][0];
+                    t = fmaf(invMtx[1][c], worldMtx[r][1], t);
+                    t = fmaf(invMtx[2][c], worldMtx[r][2], t);
+                    if (c >= 2) {
+                        // (0, 1) unit pair: adds the translation to column 3.
+                        t = fmaf(c == 3 ? 1.0f : 0.0f, worldMtx[r][c], t);
+                    }
+                    acc[r][c] = fmaf(t, weight, acc[r][c]);
+                }
+            }
+
+            *pScale &= mpScaleFlagArr[idx];
+        } while (++j < mixNum);
+
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 4; c++) {
+                weightAnmMtx[r][c] = acc[r][c];
+            }
+        }
+    }
+}
+#else
 void J3DMtxBuffer::calcWeightEnvelopeMtx() {
     __REGISTER MtxPtr weightAnmMtx;
     __REGISTER MtxPtr worldMtx;
@@ -303,6 +350,7 @@ void J3DMtxBuffer::calcWeightEnvelopeMtx() {
         }
     }
 }
+#endif
 
 void J3DMtxBuffer::calcDrawMtx(u32 mdlFlag, Vec const& param_1, Mtx const& param_2) {
     Mtx *sp24, *sp20;

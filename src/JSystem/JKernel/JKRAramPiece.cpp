@@ -79,7 +79,7 @@ BOOL JKRAramPiece::orderSync(int direction, u32 source, u32 destination, u32 len
 }
 
 void JKRAramPiece::doneDMA(u32 requestAddress) {
-    JKRAMCommand* command = reinterpret_cast< JKRAMCommand* >(requestAddress);
+    JKRAMCommand* command = U32_TO_PTR(JKRAMCommand*, requestAddress);
 
     if (command->field_0x60 != 0) {
         if (command->field_0x60 == 2) {

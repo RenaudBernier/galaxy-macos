@@ -2,10 +2,19 @@
 #include "Game/Util/MathUtil.hpp"
 #include <locale.h>
 
+#ifdef TARGET_PC
+// MSL's tolower in the "C" locale: only A-Z change; out-of-range values
+// (e.g. negative SJIS bytes from signed char) are returned unchanged.
+static inline int HashUtil_tolower(int c) {
+    return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c;
+}
+#define tolower HashUtil_tolower
+#else
 // needed here for inlining reasons
 inline int tolower(int c) {
     return ((c < 0) || (c >= 0x100)) ? c : (int)(_current_locale.ctype_cmpt_ptr->lower_map_ptr[c]);
 }
+#endif
 
 HashSortTable::HashSortTable(u32 cnt) {
     mHashCodes = new u32[cnt];

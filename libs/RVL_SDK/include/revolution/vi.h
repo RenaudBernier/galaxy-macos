@@ -1,3 +1,10 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+// Host build: VI provided by Aurora plus the port layer.
+#include <revolution/types.h>
+#include <revolution/gx.h>
+#include <dolphin/vi.h>
+#include <port/rvl_vi.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef VI_H
 #define VI_H
 
@@ -129,3 +136,4 @@ BOOL __VIResetRFIdle(void);
 #endif
 
 #endif  // VI_H
+#endif  // TARGET_PC && PORT_AURORA

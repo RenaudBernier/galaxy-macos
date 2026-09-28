@@ -43,7 +43,7 @@ namespace {
     bool calcGravityVectorOrZero(const NameObj* pActor, const TVec3f& rPosition, u32 typeFlags, TVec3f* pDest, GravityInfo* pInfo,
                                  u32 host) NO_INLINE {
         if (host == 0) {
-            host = (u32)pActor;
+            host = PTR_TO_U32(pActor);
         }
 
         return getGravityManager()->calcTotalGravityVector(pDest, pInfo, rPosition, typeFlags, host);

@@ -10,24 +10,34 @@ SpkTable::SpkTable() {
 void SpkTable::setResource(void* pRes) {
     mInitialized = false;
 
-    s32* cursor = (s32*)pRes;
+    BE(s32)* cursor = (BE(s32)*)pRes;
 
     s32 resourceCount = *cursor++;
     s32 entryOff = *cursor++;
     s32 dataOffsetsStartOff = *cursor++;
-    s32* pIsDataOffsetsInitialized = cursor;
+    BE(s32)* pIsDataOffsetsInitialized = cursor;
     BOOL isDataOffsetsInitialized = *cursor++;
 
     mResourceCount = resourceCount;
 
-    SpkParameters* entryOffset = (SpkParameters*)((s32)pRes + entryOff);
+    // PORT: file-reloc (name pointer table with 4-byte slots inside the resource)
+    SpkParameters* entryOffset = U32_TO_PTR(SpkParameters*, PTR_TO_U32(pRes) + entryOff);
     mParameters = entryOffset;
-    const char** names = (const char**)((s32)pRes + dataOffsetsStartOff);
+#ifdef TARGET_PC
+    PTR32(const char)* names = U32_TO_PTR(PTR32(const char)*, PTR_TO_U32(pRes) + dataOffsetsStartOff);
     if (!isDataOffsetsInitialized) {
         for (s32 i = 0; i < mResourceCount; i++) {
-            names[i] += (s32)pRes;
+            names[i].addr = PortReadBE32(&names[i].addr) + PTR_TO_U32(pRes);
         }
     }
+#else
+    const char** names = U32_TO_PTR(const char**, PTR_TO_U32(pRes) + dataOffsetsStartOff);
+    if (!isDataOffsetsInitialized) {
+        for (s32 i = 0; i < mResourceCount; i++) {
+            names[i] = U32_TO_PTR(const char*, PTR_TO_U32(names[i]) + PTR_TO_U32(pRes));
+        }
+    }
+#endif
 
     mNames = names;
     *pIsDataOffsetsInitialized = TRUE;

@@ -85,7 +85,7 @@ namespace {
     }
 
     PartsModel* createSubModel(LiveActor* pActor, const char* pSubModelName, MtxPtr pMtx, int drawBufferType) NO_INLINE {
-        const char* modelResName = MR::getModelResourceHolder(pActor)->mModelResTable->getResName(0UL);
+        const char* modelResName = MR::getModelResourceHolder(pActor)->mModelResTable->getResName((u32)0);
 
         if (!MR::isExistSubModel(modelResName, pSubModelName)) {
             return nullptr;
@@ -779,7 +779,7 @@ namespace MR {
     }
 
     const char* getModelResName(const LiveActor* pActor) {
-        return getModelResourceHolder(pActor)->mModelResTable->getResName(0UL);
+        return getModelResourceHolder(pActor)->mModelResTable->getResName((u32)0);
     }
 
     bool isExistAnim(const LiveActor* pActor, const char* pName) {
@@ -1664,7 +1664,7 @@ namespace MR {
 
     void setJointTransformLocalMtx(const LiveActor* pActor, const char* pName, MtxPtr pMtx) {
         XjointTransform* pTransform = pActor->mModelManager->getJointTransform(pName);
-        pTransform->_68 = (u32)pMtx;
+        pTransform->_68 = PTR_TO_U32(pMtx);
     }
 
     f32 getBckFrame(const LiveActor* pActor) {
@@ -2386,11 +2386,19 @@ namespace MR {
     }
 
     void validateExCollisionParts(LiveActor* pActor) {
+#ifdef TARGET_PC
+        pActor->mBinder->_1EC._2 = true;  // 0x20 with Metrowerks' MSB-first bitfields
+#else
         *(u8*)&pActor->mBinder->_1EC |= 0x20;
+#endif
     }
 
     void invalidateExCollisionParts(LiveActor* pActor) {
+#ifdef TARGET_PC
+        pActor->mBinder->_1EC._2 = false;
+#else
         *(u8*)&pActor->mBinder->_1EC &= ~0x20;
+#endif
     }
 
     void onUpdateCollisionParts(LiveActor* pActor) {
@@ -2577,12 +2585,12 @@ namespace MR {
         pLod->setFarClipping(farClip);
 
         if (pLod->_10 != nullptr) {
-            const char* pResName = getModelResourceHolder(pLod->_10)->mModelResTable->getResName(0UL);
+            const char* pResName = getModelResourceHolder(pLod->_10)->mModelResTable->getResName((u32)0);
             tryStartAllAnim(pLod->_10, pResName);
         }
 
         if (pLod->_14 != nullptr) {
-            const char* pResName = getModelResourceHolder(pLod->_14)->mModelResTable->getResName(0UL);
+            const char* pResName = getModelResourceHolder(pLod->_14)->mModelResTable->getResName((u32)0);
             tryStartAllAnim(pLod->_14, pResName);
         }
 
@@ -2596,12 +2604,12 @@ namespace MR {
         pLod->setFarClipping(farClip);
 
         if (pLod->_10 != nullptr) {
-            const char* pResName = getModelResourceHolder(pLod->_10)->mModelResTable->getResName(0UL);
+            const char* pResName = getModelResourceHolder(pLod->_10)->mModelResTable->getResName((u32)0);
             tryStartAllAnim(pLod->_10, pResName);
         }
 
         if (pLod->_14 != nullptr) {
-            const char* pResName = getModelResourceHolder(pLod->_14)->mModelResTable->getResName(0UL);
+            const char* pResName = getModelResourceHolder(pLod->_14)->mModelResTable->getResName((u32)0);
             tryStartAllAnim(pLod->_14, pResName);
         }
 

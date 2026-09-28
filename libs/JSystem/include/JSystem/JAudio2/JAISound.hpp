@@ -76,6 +76,20 @@ public:
 
     /* 0x00 */ union {
         u32 mComposite;
+#ifdef TARGET_PC
+        // Little-endian host: same value split (section:8 group:8 wave:16,
+        // most significant first) as the big-endian layout below.
+        struct {
+            u16 waveID;
+            union {
+                u16 value;
+                struct {
+                    u8 groupID;
+                    u8 sectionID;
+                } parts;
+            } type;
+        } info;
+#else
         struct {
             union {
                 u16 value;
@@ -86,6 +100,7 @@ public:
             } type;
             u16 waveID;
         } info;
+#endif
     } mID;
 };
 

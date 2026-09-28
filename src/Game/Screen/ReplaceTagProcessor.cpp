@@ -131,10 +131,17 @@ namespace ReplaceTagProcessor {
     u32 exeStringGroup(wchar_t* pDst, const MessageEditorMessageTag& rTag, va_list args) {
         va_list copy;
         const wchar_t* pString = nullptr;
+#ifdef TARGET_PC
+        va_copy(copy, args);  // va_list is a plain pointer on arm64 macOS
+#else
         *copy = *args;
+#endif
         for (u32 i = 0; i <= rTag.getParam32(1); i++) {
             pString = va_arg(copy, const wchar_t*);
         }
+#ifdef TARGET_PC
+        va_end(copy);
+#endif
 
         return swprintf(pDst, 0x100, L"%ls", pString);
     }
@@ -142,10 +149,17 @@ namespace ReplaceTagProcessor {
     u32 exeNumberGroup(wchar_t* pDst, const MessageEditorMessageTag& rTag, va_list args) {
         va_list copy;
         int number = 0;
+#ifdef TARGET_PC
+        va_copy(copy, args);
+#else
         *copy = *args;
+#endif
         for (u32 i = 0; i <= rTag.getParam32(1); i++) {
             number = va_arg(copy, int);
         }
+#ifdef TARGET_PC
+        va_end(copy);
+#endif
 
         switch (rTag.getTag()) {
         case 5:

@@ -2,10 +2,12 @@
 
 #include <revolution/types.h>
 
+// Wii Remote speaker wave (SpkRes.arc); big-endian file data. The samples
+// stay big-endian: the remote speaker isn't emulated on the host.
 struct WaveData {
-    u32 mSize;
-    u32 mLoopStartPos;
-    u32 mLoopEndPos;
+    BE(u32) mSize;
+    BE(u32) mLoopStartPos;
+    BE(u32) mLoopEndPos;
     s16 mWave[];
 };
 

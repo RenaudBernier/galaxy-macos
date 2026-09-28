@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXFIFO_H
 #define GXFIFO_H
 
@@ -54,3 +57,4 @@ void GXGetGPStatus(GXBool*, GXBool*, GXBool*, GXBool*, GXBool*);
 #endif
 
 #endif  // GXFIFO_H
+#endif  // TARGET_PC && PORT_AURORA

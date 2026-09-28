@@ -156,7 +156,7 @@ bool CubeGravity::calcFaceGravity(const TVec3f& rPosition, s32 area, TVec3f* pDe
 }
 
 bool CubeGravity::calcEdgeGravity(const TVec3f& rPosition, s32 area, TVec3f* pDest, f32* pScalar) const {
-    // There is a mistake here: so long as area is not both even and negative, the function will not
+    // There is a mistake here: so s32 as area is not both even and negative, the function will not
     // return here. The intent is that area should be neither even nor negative, since all edges
     // are odd and positive. However, this mistake does not really matter since the switch will
     // return if this does not.

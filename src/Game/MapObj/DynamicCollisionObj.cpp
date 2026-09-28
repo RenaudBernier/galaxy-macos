@@ -163,6 +163,17 @@ void DynamicCollisionObj::createCollision() {
     u16* u16array = new (4) u16[v + 3];
     mKCLFile->mOctree = u16array;
 
+#ifdef TARGET_PC
+    // The octree and its prism lists are read big-endian (as in KCL files);
+    // the rest of this KCL is in host order, like a converted file.
+    PortWriteBE16(&u16array[0], 0x8000);
+    PortWriteBE16(&u16array[1], 2);
+
+    s32 count = v;
+    for (s32 i = 0; i <= v; i++) {
+        PortWriteBE16(&u16array[i + 2], count--);
+    }
+#else
     u16array[0] = 0x8000;
     u16array[1] = 2;
 
@@ -170,6 +181,7 @@ void DynamicCollisionObj::createCollision() {
     for (s32 i = 0; i <= v; i++) {
         u16array[i + 2] = count--;
     }
+#endif
 
     mKCLFile->mThickness = 40.f;
     mKCLFile->mBlockXShift = -1;

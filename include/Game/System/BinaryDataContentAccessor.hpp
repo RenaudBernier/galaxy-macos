@@ -3,6 +3,23 @@
 #include "Game/Util/MemoryUtil.hpp"
 #include <JSystem/JSupport/JSUMemoryOutputStream.hpp>
 
+// Multi-byte values in save data records are big-endian (the Wii layout).
+inline u16 BinaryDataReadU16(const void* p) {
+#ifdef TARGET_PC
+    return PortReadBE16(p);
+#else
+    return *static_cast< const u16* >(p);
+#endif
+}
+
+inline void BinaryDataWriteU16(void* p, u16 value) {
+#ifdef TARGET_PC
+    PortWriteBE16(p, value);
+#else
+    *static_cast< u16* >(p) = value;
+#endif
+}
+
 class BinaryDataContentHeaderSerializer {
 public:
     BinaryDataContentHeaderSerializer(u8*, u32);

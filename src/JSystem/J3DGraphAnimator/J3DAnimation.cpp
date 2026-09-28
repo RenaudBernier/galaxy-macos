@@ -219,7 +219,7 @@ void J3DFrameCtrl::update() {
     }
 }
 
-J3DAnmTransform::J3DAnmTransform(s16 frameMax, f32* pScaleData, s16* pRotData, f32* pTransData) : J3DAnmBase(frameMax) {
+J3DAnmTransform::J3DAnmTransform(s16 frameMax, BE(f32)* pScaleData, BE(s16)* pRotData, BE(f32)* pTransData) : J3DAnmBase(frameMax) {
     mScaleData = pScaleData;
     mRotData = pRotData;
     mTransData = pTransData;
@@ -548,8 +548,81 @@ inline f32 J3DHermiteInterpolation(__REGISTER f32 pp1, __REGISTER s16 const* pp2
     }
 
     return value;
+#else
+    f32 value = pp1;
+    f32 time = *pp2;
+    f32 end = *pp5;
+    const f32 start = *pp3;
+    const f32 duration = end - time;
+    end = *pp6;
+    f32 t = value - time;
+    value = *pp7;
+    f32 delta = end - start;
+    t = t / duration;
+    time = *pp4;
+    value = __builtin_fmaf(value, duration, start);
+    delta = __builtin_fmaf(-duration, time, delta);
+    const f32 squared = t * t;
+    value = value - end;
+    value = value - delta;
+    end = squared * value;
+    value = __builtin_fmaf(duration, time, end);
+    value = __builtin_fmaf(value, t, start);
+    value = __builtin_fmaf(delta, squared, value);
+    value = value - end;
+    return value;
 #endif
 }
+
+#ifdef TARGET_PC
+// Key data is read in place from big-endian animation resources. These follow
+// the paired-single sequences above/in JMAHermiteInterpolation operation by
+// operation (fmadds/fmsubs/fnmsubs are fused).
+inline f32 J3DHermiteInterpolation(f32 p1, BE(f32) const* pp2, BE(f32) const* pp3, BE(f32) const* pp4, BE(f32) const* pp5,
+                                   BE(f32) const* pp6, BE(f32) const* pp7) {
+    const f32 p2 = *pp2, p3 = *pp3, p4 = *pp4, p5 = *pp5, p6 = *pp6, p7 = *pp7;
+    const f32 ff31 = p1 - p2;
+    f32 ff30 = p5 - p2;
+    const f32 ff29 = ff31 / ff30;
+    const f32 ff28 = ff29 * ff29;
+    f32 ff25 = ff29 + ff29;
+    const f32 ff27 = ff28 - ff29;
+    ff30 = p3 - p6;
+    f32 ff26 = fmaf(ff25, ff27, -ff28);
+    ff25 = fmaf(p4, ff27, p4);
+    ff26 = fmaf(ff26, ff30, p3);
+    ff25 = fmaf(p7, ff27, ff25);
+    ff25 = fmaf(ff29, p4, -ff25);
+    ff25 = fmaf(-ff31, ff25, ff26);
+    return ff25;
+}
+
+inline f32 J3DHermiteInterpolation(f32 pp1, BE(s16) const* pp2, BE(s16) const* pp3, BE(s16) const* pp4, BE(s16) const* pp5,
+                                   BE(s16) const* pp6, BE(s16) const* pp7) {
+    f32 value = pp1;
+    f32 time = (s16)*pp2;
+    f32 end = (s16)*pp5;
+    const f32 start = (s16)*pp3;
+    const f32 duration = end - time;
+    end = (s16)*pp6;
+    f32 t = value - time;
+    value = (s16)*pp7;
+    f32 delta = end - start;
+    t = t / duration;
+    time = (s16)*pp4;
+    value = fmaf(value, duration, start);
+    delta = fmaf(-duration, time, delta);
+    const f32 squared = t * t;
+    value = value - end;
+    value = value - delta;
+    end = squared * value;
+    value = fmaf(duration, time, end);
+    value = fmaf(value, t, start);
+    value = fmaf(delta, squared, value);
+    value = value - end;
+    return value;
+}
+#endif
 
 template < typename T >
 f32 J3DGetKeyFrameInterpolation(f32 frame, J3DAnmKeyTableBase* pKeyTable, T* pData) {
@@ -1362,6 +1435,6 @@ void J3DAnmTevRegKey::searchUpdateMaterialID(J3DModelData* pModelData) {
     searchUpdateMaterialID(&pModelData->getMaterialTable());
 }
 
-void J3DAnimation_FORCE_EMIT(s16 frameMax, f32* pWeight) {
+void J3DAnimation_FORCE_EMIT(s16 frameMax, BE(f32)* pWeight) {
     J3DAnmCluster cluster(frameMax, pWeight);
 }

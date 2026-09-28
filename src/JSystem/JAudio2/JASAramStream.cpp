@@ -11,6 +11,13 @@
 #include "JSystem/JSupport/JSupport.hpp"
 #include <revolution/os/OSCache.h>
 
+// TaskData holds a pointer: 0xC bytes on the Wii, larger on 64-bit hosts.
+#ifdef TARGET_PC
+#define JAS_TASKDATA_SIZE sizeof(JASAramStream::TaskData)
+#else
+#define JAS_TASKDATA_SIZE 0xc
+#endif
+
 JASTaskThread* JASAramStream::sLoadThread;
 
 u8* JASAramStream::sReadBuffer;
@@ -117,7 +124,7 @@ bool JASAramStream::prepare(s32 param_0, int param_1) {
     data.stream = this;
     data._4 = _14C;
     data._8 = param_1;
-    if (!sLoadThread->sendCmdMsg(headerLoadTask, &data, 0xc)) {
+    if (!sLoadThread->sendCmdMsg(headerLoadTask, &data, JAS_TASKDATA_SIZE)) {
         JASDriver::rejectCallback(channelProcCallback, this);
         return false;
     }
@@ -186,7 +193,7 @@ void JASAramStream::firstLoadTask(void* i_data) {
 
     if (data->_4 != 0) {
         data->_4--;
-        if (!sLoadThread->sendCmdMsg(firstLoadTask, data, 0xc)) {
+        if (!sLoadThread->sendCmdMsg(firstLoadTask, data, JAS_TASKDATA_SIZE)) {
             UNK_BOOL_B = true;
         }
 
@@ -264,7 +271,7 @@ bool JASAramStream::headerLoad(u32 param_0, int param_1) {
     data.stream = this;
     data._4 = _108 - 1;
     data._8 = param_1;
-    if (!sLoadThread->sendCmdMsg(firstLoadTask, &data, 0xc)) {
+    if (!sLoadThread->sendCmdMsg(firstLoadTask, &data, JAS_TASKDATA_SIZE)) {
         UNK_BOOL_B = true;
         return false;
     }
@@ -587,7 +594,7 @@ void JASAramStream::updateChannel(u32 i_callbackType, JASChannel* i_channel, JAS
 s32 JASAramStream::channelProc() {
     OSMessage msg;
     while (OSReceiveMessage(&_020, &msg, OS_MESSAGE_NOBLOCK)) {
-        switch ((u32)msg) {
+        switch ((u32)(uintptr_t)msg) {
         case 4:
             _0AC = true;
             break;
@@ -602,12 +609,12 @@ s32 JASAramStream::channelProc() {
     }
 
     while (OSReceiveMessage(&_000, &msg, OS_MESSAGE_NOBLOCK)) {
-        switch ((u32)msg & 0xff) {
+        switch ((u32)(uintptr_t)msg & 0xff) {
         case 0:
             channelStart();
             break;
         case 1:
-            channelStop(JSUHiHalf((u32)msg));
+            channelStop(JSUHiHalf((u32)(uintptr_t)msg));
             break;
         case 2:
             _0AE |= 1;

@@ -12,6 +12,13 @@
 #include "JSystem/JParticle/JPAParticle.hpp"
 #include "JSystem/JParticle/JPAResourceManager.hpp"
 
+// Size of an entry of the per-resource function tables.
+#ifdef TARGET_PC
+#define JPA_FUNC_PTR_SIZE sizeof(void*)
+#else
+#define JPA_FUNC_PTR_SIZE 4
+#endif
+
 JPAResource::JPAResource() {
     mpDrawEmitterChildFuncList = NULL;
     mpDrawEmitterFuncList = NULL;
@@ -102,7 +109,7 @@ void JPAResource::init(JKRHeap* heap) {
     }
 
     if (mpCalcEmitterFuncListNum != 0) {
-        mpCalcEmitterFuncList = (EmitterFunc*)JKRAllocFromHeap(heap, mpCalcEmitterFuncListNum * 4, 4);
+        mpCalcEmitterFuncList = (EmitterFunc*)JKRAllocFromHeap(heap, mpCalcEmitterFuncListNum * JPA_FUNC_PTR_SIZE, JPA_FUNC_PTR_SIZE);
     }
 
     int func_no = 0;
@@ -198,7 +205,7 @@ void JPAResource::init(JKRHeap* heap) {
     }
 
     if (mpCalcParticleFuncListNum != 0) {
-        mpCalcParticleFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpCalcParticleFuncListNum * 4, 4);
+        mpCalcParticleFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpCalcParticleFuncListNum * JPA_FUNC_PTR_SIZE, JPA_FUNC_PTR_SIZE);
     }
 
     func_no = 0;
@@ -316,7 +323,7 @@ void JPAResource::init(JKRHeap* heap) {
     }
 
     if (mpCalcParticleChildFuncListNum != 0) {
-        mpCalcParticleChildFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpCalcParticleChildFuncListNum * 4, 4);
+        mpCalcParticleChildFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpCalcParticleChildFuncListNum * JPA_FUNC_PTR_SIZE, JPA_FUNC_PTR_SIZE);
     }
 
     func_no = 0;
@@ -359,7 +366,7 @@ void JPAResource::init(JKRHeap* heap) {
     }
 
     if (mpDrawEmitterFuncListNum != 0) {
-        mpDrawEmitterFuncList = (EmitterFunc*)JKRAllocFromHeap(heap, mpDrawEmitterFuncListNum * 4, 4);
+        mpDrawEmitterFuncList = (EmitterFunc*)JKRAllocFromHeap(heap, mpDrawEmitterFuncListNum * JPA_FUNC_PTR_SIZE, JPA_FUNC_PTR_SIZE);
     }
 
     func_no = 0;
@@ -455,7 +462,7 @@ void JPAResource::init(JKRHeap* heap) {
     }
 
     if (mpDrawEmitterChildFuncListNum != 0) {
-        mpDrawEmitterChildFuncList = (EmitterFunc*)JKRAllocFromHeap(heap, mpDrawEmitterChildFuncListNum * 4, 4);
+        mpDrawEmitterChildFuncList = (EmitterFunc*)JKRAllocFromHeap(heap, mpDrawEmitterChildFuncListNum * JPA_FUNC_PTR_SIZE, JPA_FUNC_PTR_SIZE);
     }
 
     func_no = 0;
@@ -501,7 +508,7 @@ void JPAResource::init(JKRHeap* heap) {
     }
 
     if (mpDrawParticleFuncListNum != 0) {
-        mpDrawParticleFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpDrawParticleFuncListNum * 4, 4);
+        mpDrawParticleFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpDrawParticleFuncListNum * JPA_FUNC_PTR_SIZE, JPA_FUNC_PTR_SIZE);
     }
 
     func_no = 0;
@@ -603,7 +610,7 @@ void JPAResource::init(JKRHeap* heap) {
     }
 
     if (mpDrawParticleChildFuncListNum != 0) {
-        mpDrawParticleChildFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpDrawParticleChildFuncListNum * 4, 4);
+        mpDrawParticleChildFuncList = (ParticleFunc*)JKRAllocFromHeap(heap, mpDrawParticleChildFuncListNum * JPA_FUNC_PTR_SIZE, JPA_FUNC_PTR_SIZE);
     }
 
     func_no = 0;
@@ -915,7 +922,18 @@ void JPAResource::setPTev() {
         if (mpExTexShape->isUseIndirect()) {
             GXSetIndTexOrder(GX_INDTEXSTAGE0, GX_TEXCOORD1, GX_TEXMAP2);
             GXSetIndTexCoordScale(GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+#ifdef TARGET_PC
+            {
+                const BE(f32)* src = mpExTexShape->getIndTexMtx();
+                f32 indMtx[2][3];
+                for (int k = 0; k < 6; k++) {
+                    indMtx[k / 3][k % 3] = src[k];
+                }
+                GXSetIndTexMtx(GX_ITM_0, indMtx, mpExTexShape->getExpScale());
+            }
+#else
             GXSetIndTexMtx(GX_ITM_0, (f32(*)[3])mpExTexShape->getIndTexMtx(), mpExTexShape->getExpScale());
+#endif
             GXSetTevIndirect(GX_TEVSTAGE0, GX_INDTEXSTAGE0, GX_ITF_8, GX_ITB_STU, GX_ITM_0, GX_ITW_OFF, GX_ITW_OFF, 0, 0, GX_ITBA_OFF);
             ind_stages++;
             tex_gens++;
@@ -1055,6 +1073,7 @@ void JPAResource::calcWorkData_d(JPAEmitterWorkData* work) {
 
 #include "JSystem/JParticle/JPAFieldBlockInline.hpp"
 #include "JSystem/JParticle/JPAListInline.hpp"
+
 
 template JPANode< JPABaseParticle >* JPAList< JPABaseParticle >::erase(JPANode< JPABaseParticle >*);
 template void JPAList< JPABaseParticle >::push_front(JPANode< JPABaseParticle >*);

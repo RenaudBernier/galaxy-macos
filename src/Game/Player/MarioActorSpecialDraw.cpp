@@ -821,8 +821,8 @@ void MarioActor::updateDarkMask(u16 unused) {
     u8* previous = mMaskTextures[_B88]->mImage;
     _B88 = 1 - _B88;
     u8* image = mMaskTextures[_B88]->mImage;
-    u8 x = MR::getRandom(0L, 8L);
-    u8 y = MR::getRandom(0L, 8L);
+    u8 x = MR::getRandom((s32)0, (s32)8);
+    u8 y = MR::getRandom((s32)0, (s32)8);
     s32 index = x + y * 8;
     image[index] = 0xF0;
     previous[index] = 0xF0;

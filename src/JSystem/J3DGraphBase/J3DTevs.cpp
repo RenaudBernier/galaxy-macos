@@ -261,7 +261,11 @@ bool isTexNoReg(void* pDL) {
 }
 
 u16 getTexNoReg(void* pDL) {
+#ifdef TARGET_PC
+    u32 var_r31 = PortReadBE32((u8*)pDL + 1);  // BP command in a big-endian display list
+#else
     u32 var_r31 = *(u32*)((u8*)pDL + 1);
+#endif
     return var_r31 & 0xFFFFFF;
 }
 

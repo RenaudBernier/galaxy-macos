@@ -54,7 +54,7 @@ bool JAIStream::prepare_prepareStream_() {
 
         streamAramAddr = streamAramMgr->newStreamAram(&local_28);
         if (streamAramAddr != nullptr) {
-            inner_.aramStream.init((u32)streamAramAddr, local_28, &JAIStream_JASAramStreamCallback_, this);
+            inner_.aramStream.init(PTR_TO_U32(streamAramAddr), local_28, &JAIStream_JASAramStreamCallback_, this);
             mPrepareState = 1;
             mPrepareCount = 0;
         } else {

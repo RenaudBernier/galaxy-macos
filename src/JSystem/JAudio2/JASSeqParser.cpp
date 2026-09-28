@@ -560,7 +560,17 @@ s32 JASSeqParser::cmdNop(JASTrack* track, u32* args) {
 }
 
 s32 JASSeqParser::cmdFIRSet(JASTrack* track, u32* args) {
+#ifdef TARGET_PC
+    // FIR coefficients are big-endian s16 inside the sequence data.
+    const u8* src = static_cast< const u8* >(track->getSeqCtrl()->getAddr(args[0]));
+    s16 fir[8];
+    for (u32 i = 0; i < 8; i++) {
+        fir[i] = (s16)PortReadBE16(src + i * 2);
+    }
+    track->setFIR(fir);
+#else
     track->setFIR((s16*)track->getSeqCtrl()->getAddr(args[0]));
+#endif
     return 0;
 }
 
@@ -735,7 +745,11 @@ s32 JASSeqParser::cmdDump(JASTrack* track, u32* args) {
 
 s32 JASSeqParser::cmdPrintf(JASTrack* track, u32* args) {
     char formatString[0x80];
+#ifdef TARGET_PC
+    uintptr_t values[4];  // %s arguments are host pointers
+#else
     u32 values[4];
+#endif
     u8 formatTypes[4];
     u32 numValues = 0, i;
     for (i = 0; i < sizeof(formatString); i++) {
@@ -790,7 +804,11 @@ s32 JASSeqParser::cmdPrintf(JASTrack* track, u32* args) {
         values[i] = track->getSeqCtrl()->readByte();
         switch (formatTypes[i]) {
         case 2:
+#ifdef TARGET_PC
+            values[i] = (uintptr_t)track->getSeqCtrl()->getAddr(values[i]);
+#else
             values[i] = (u32)track->getSeqCtrl()->getAddr(values[i]);
+#endif
             break;
         case 3:
         case 4:

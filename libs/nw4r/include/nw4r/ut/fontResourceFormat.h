@@ -10,46 +10,48 @@ namespace nw4r {
             s8 charWidth;
         };
 
+        // BRFNT blocks, overlaid on (big-endian) file data. The pointer fields
+        // hold file offsets until ResFont::Rebuild relocates them.
         struct FontTextureGlyph {
             u8 cellWidth;
             u8 cellHeight;
             s8 baselinePos;
             u8 maxCharWidth;
-            u32 sheetSize;
-            u16 sheetNum;
-            u16 sheetFormat;
-            u16 sheetRow;
-            u16 sheetLine;
-            u16 sheetWidth;
-            u16 sheetHeight;
-            u8* sheetImage;
+            BE(u32) sheetSize;
+            BE(u16) sheetNum;
+            BE(u16) sheetFormat;
+            BE(u16) sheetRow;
+            BE(u16) sheetLine;
+            BE(u16) sheetWidth;
+            BE(u16) sheetHeight;
+            PTR32(u8) sheetImage;
         };
 
         struct FontWidth {
-            u16 indexBegin;
-            u16 indexEnd;
-            FontWidth* pNext;
+            BE(u16) indexBegin;
+            BE(u16) indexEnd;
+            PTR32(FontWidth) pNext;
             CharWidths widthTable[];
         };
 
         struct FontCodeMap {
-            u16 ccodeBegin;
-            u16 ccodeEnd;
-            u16 mappingMethod;
-            u16 reserved;
-            FontCodeMap* pNext;
-            u16 mapInfo[];
+            BE(u16) ccodeBegin;
+            BE(u16) ccodeEnd;
+            BE(u16) mappingMethod;
+            BE(u16) reserved;
+            PTR32(FontCodeMap) pNext;
+            BE(u16) mapInfo[];
         };
 
         struct FontInformation {
             u8 fontType;
             s8 linefeed;
-            u16 alterCharIndex;
+            BE(u16) alterCharIndex;
             CharWidths defaultWidth;
             u8 encoding;
-            FontTextureGlyph* pGlyph;
-            FontWidth* pWidth;
-            FontCodeMap* pMap;
+            PTR32(FontTextureGlyph) pGlyph;
+            PTR32(FontWidth) pWidth;
+            PTR32(FontCodeMap) pMap;
             u8 height;
             u8 width;
             u8 ascent;

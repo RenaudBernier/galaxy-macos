@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXINIT_H
 #define GXINIT_H
 
@@ -13,3 +16,4 @@ void __GXInitGX(void);
 #endif
 
 #endif // GXINIT_H
+#endif  // TARGET_PC && PORT_AURORA

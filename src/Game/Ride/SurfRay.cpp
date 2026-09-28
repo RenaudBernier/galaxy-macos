@@ -390,7 +390,7 @@ void SurfRay::exeTutorial() {
         }
         break;
     case 7:
-    case 11:
+    case 11: {
         if (MR::isFirstStep(this)) {
             MR::startBckPlayerJ("サーフィン傾き開始");
         }
@@ -403,6 +403,7 @@ void SurfRay::exeTutorial() {
             MR::setBckBlendWeight(1.0f - rot, 0.0f, rot);
         }
         break;
+    }
     case 13:
         break;
     default:
@@ -418,7 +419,7 @@ void SurfRay::exeWipeOut() {
     if (!updateRide() && !MR::isWipeActive()) {
         MR::resetPosition(this, "スタート位置（サーフィン）");
         resetAllInfo();
-        MR::startBckPlayer("SurfRide", 0L);
+        MR::startBckPlayer("SurfRide", (s32)0);
         MR::resetCameraMan();
         setNerve(GET_NERVE(SurfRay, SurfRayNrvWipeIn));
     }
@@ -438,7 +439,7 @@ void SurfRay::exeReady() {
     if (MR::isFirstStep(this)) {
         MR::endStartPosCamera();
         MR::startBck(this, "WaitRaceStart");
-        MR::startBckPlayer("SurfRide", 0L);
+        MR::startBckPlayer("SurfRide", (s32)0);
         MR::tryEmitEffect(this, "Ripple");
         MR::tryDeleteEffect(this, "RunDashSplash");
         MR::tryDeleteEffect(this, "SwimSplash");
@@ -504,7 +505,7 @@ bool SurfRay::receiveOtherMsg(u32 msg, HitSensor* pSender, HitSensor* pReceiver)
         }
 
         MR::startBckNoInterpole(this, "Wait");
-        MR::startBckPlayer("SurfRideLoop", 0L);
+        MR::startBckPlayer("SurfRideLoop", (s32)0);
         MR::calcAnimDirect(this);
         mActorJointCtrl->resetDynamicCtrl();
 
@@ -557,7 +558,7 @@ bool SurfRay::receiveOtherMsg(u32 msg, HitSensor* pSender, HitSensor* pReceiver)
         MR::resetPosition(this, "スタート位置（サーフィン）");
         resetAllInfo();
         MR::setPlayerPos(mPosition);
-        MR::startBckPlayer("SurfRide", 0L);
+        MR::startBckPlayer("SurfRide", (s32)0);
         MR::resetCameraMan();
         return true;
     }

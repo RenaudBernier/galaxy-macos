@@ -87,7 +87,7 @@ void J3DGDSetTevOrder(GXTevStageID, GXTexCoordID, GXTexMapID, GXChannelID, GXTex
 void J3DGDSetTevKColor(GXTevKColorID, GXColor);
 void J3DGDSetTevColorS10(GXTevRegID, GXColorS10);
 void J3DGDSetFog(GXFogType, f32, f32, f32, f32, GXColor);
-void J3DGDSetFogRangeAdj(u8, u16, _GXFogAdjTable*);
+void J3DGDSetFogRangeAdj(GXBool, u16, _GXFogAdjTable*);
 
 inline void J3DGDSetNumChans(u8 numChans) {
     J3DGDWriteXFCmd(0x1009, numChans);

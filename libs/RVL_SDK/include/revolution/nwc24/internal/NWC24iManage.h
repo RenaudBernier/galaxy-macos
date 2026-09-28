@@ -1,7 +1,7 @@
 #ifndef RVL_SDK_NWC24_INTERNAL_MANAGE_H
 #define RVL_SDK_NWC24_INTERNAL_MANAGE_H
 #include "revolution/types.h"
-#include <cstdlib>
+#include <stdlib.h>
 
 #include "revolution/nwc24/NWC24Mime.h"
 #include "revolution/nwc24/NWC24Types.h"

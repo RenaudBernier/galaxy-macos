@@ -4,6 +4,15 @@
 #include "Game/Util/StringUtil.hpp"
 #include <revolution/types.h>
 
+#ifdef TARGET_PC
+// MWCC accepts explicit specializations after the implicit instantiation they
+// replace; clang requires them to be declared first.
+template <>
+void MR::FixedRingBuffer< const DemoStartInfo*, 16 >::push_back(const DemoStartInfo* const& rValue);
+template <>
+void MR::FixedRingBuffer< const DemoStartInfo*, 16 >::iterator::operator++();
+#endif
+
 DemoStartInfo::DemoStartInfo() {
     _0 = nullptr;
     _4 = nullptr;

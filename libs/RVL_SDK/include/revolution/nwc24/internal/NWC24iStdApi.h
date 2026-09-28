@@ -1,7 +1,7 @@
 #ifndef RVL_SDK_NWC24_INTERNAL_STD_API_H
 #define RVL_SDK_NWC24_INTERNAL_STD_API_H
 #include "revolution/types.h"
-#include <cstdlib>
+#include <stdlib.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

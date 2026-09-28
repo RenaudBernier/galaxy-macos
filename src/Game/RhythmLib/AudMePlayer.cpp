@@ -341,7 +341,7 @@ s32 AudMeMgr::getSeqStartPos(u32 meId) {
         return -1;
     }
 
-    s32* pStartPos = mMeSeq->mSeqStartPos;
+    BE(s32)* pStartPos = mMeSeq->mSeqStartPos;
     if (meId >= mMeSeq->mNumEntries) {
         return -1;
     }
@@ -377,7 +377,7 @@ void AudMeMgr::setOuterPlayingParam(s32 meId, AudMe* pMe) {
 }
 
 void AudMePlayingParamsHolder::setResource(void* pRes) {
-    s32* cursor = (s32*)pRes;
+    BE(s32)* cursor = (BE(s32)*)pRes;
 
     s32 numEntries = *cursor++;
     s32 entryOff = *cursor++;
@@ -385,12 +385,24 @@ void AudMePlayingParamsHolder::setResource(void* pRes) {
 
     mNumEntries = numEntries;
 
-    const char** offsets = (const char**)((s32)pRes + namesOff);
-    mParams = (AudMePlayingParams*)((s32)pRes + entryOff);
+    // PORT: file-reloc (name pointer table with 4-byte slots inside the resource)
+#ifdef TARGET_PC
+    PTR32(const char)* offsets = U32_TO_PTR(PTR32(const char)*, PTR_TO_U32(pRes) + namesOff);
+    mParams = U32_TO_PTR(AudMePlayingParams*, PTR_TO_U32(pRes) + entryOff);
 
     for (u32 i = 0; i < numEntries; i++) {
-        offsets[i] += (s32)pRes;
+        offsets[i].addr = PortReadBE32(&offsets[i].addr) + PTR_TO_U32(pRes);
+    }
+
+    mNames = offsets;
+#else
+    const char** offsets = U32_TO_PTR(const char**, PTR_TO_U32(pRes) + namesOff);
+    mParams = U32_TO_PTR(AudMePlayingParams*, PTR_TO_U32(pRes) + entryOff);
+
+    for (u32 i = 0; i < numEntries; i++) {
+        offsets[i] = U32_TO_PTR(const char*, PTR_TO_U32(offsets[i]) + PTR_TO_U32(pRes));
     }
 
     mNames = (const char**)offsets;
+#endif
 }

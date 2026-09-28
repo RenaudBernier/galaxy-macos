@@ -17,6 +17,11 @@
 #include "Game/Util/SoundUtil.hpp"
 #include "Game/Util/StarPointerUtil.hpp"
 
+#ifndef DEG_TO_RAD
+// Same definition as libs/RVL_SDK/include/macros.h.
+#define DEG_TO_RAD(x) ((x) * (3.1415926f / 180.0f))
+#endif
+
 void Butterfly_FORCE_MATCH_SDATA2() {
     (void)1.0f;
     (void)0.0f;

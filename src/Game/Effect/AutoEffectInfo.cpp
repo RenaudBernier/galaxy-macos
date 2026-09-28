@@ -6,7 +6,9 @@ void AutoEffectInfo_FORCE_MATCH_SDATA2() {
     (void)1.0f;
 }
 
+#ifndef TARGET_PC  // declared by the host <stdlib.h>
 extern "C" u32 strtoul(const char*, char**, int);
+#endif
 
 namespace {
     u32 str2Color(const char* pStr) NO_INLINE {

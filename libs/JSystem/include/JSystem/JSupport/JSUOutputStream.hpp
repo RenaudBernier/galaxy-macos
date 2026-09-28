@@ -17,11 +17,18 @@ public:
         write(&val, sizeof(u8));
     }
 
+    // Streams write big-endian data (matching JSUInputStream).
     inline void writeU16(u16 val) {
+#ifdef TARGET_PC
+        val = __builtin_bswap16(val);
+#endif
         write(&val, sizeof(u16));
     }
 
     inline void writeU32(u32 val) {
+#ifdef TARGET_PC
+        val = __builtin_bswap32(val);
+#endif
         write(&val, sizeof(u32));
     }
 

@@ -45,7 +45,13 @@ namespace NrvGameSystem {
     NEW_NERVE(GameSystemNormal, GameSystem, Normal);
 };  // namespace NrvGameSystem
 
+#ifdef TARGET_PC
+// The host platform layer owns the process entry point and calls this on the
+// game's main thread.
+extern "C" void GameMain(void) {
+#else
 void main(void) {
+#endif
     OSInitFastCast();
     DVDInit();
     VIInit();

@@ -1710,7 +1710,13 @@ u32 Mario::initSoundTable(SoundList* pList, u32 globalTablePosition) {
                 }
 
                 if (strcmp(pEntry->name, pSwapEntry->name) == 0) {
+#ifdef TARGET_PC
+                    // The original indexes the table as 4 words per entry
+                    // (32-bit name pointer + three offsets).
+                    u32 soundID = (&pSwapEntry->offset1)[globalTablePosition - 1];
+#else
                     u32 soundID = pSwapOffset[swapIndex * 4];
+#endif
                     if (soundID != 0) {
                         pEntry->_14 = soundID;
                     }

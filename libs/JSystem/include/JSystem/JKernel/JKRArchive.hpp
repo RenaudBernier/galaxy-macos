@@ -34,50 +34,66 @@ public:
         FILE_FLAG_IS_YAZ0 = 1 << FILE_FLAG_IS_YAZ0_SHIFT
     };
 
+    // RARC structures are overlaid on (big-endian) archive data.
     struct RarcHeader {
-        /* 0x0 */ u32 mMagic;
-        /* 0x4 */ u32 mFileSize;
-        /* 0x8 */ u32 mHeaderSize;
-        /* 0xC */ u32 mFileDataOffset;
-        /* 0x10 */ u32 mTotalDataSize;
-        /* 0x14 */ u32 mMRamDataSize;
-        /* 0x18 */ u32 mARamDataSize;
+        /* 0x0 */ BE(u32) mMagic;
+        /* 0x4 */ BE(u32) mFileSize;
+        /* 0x8 */ BE(u32) mHeaderSize;
+        /* 0xC */ BE(u32) mFileDataOffset;
+        /* 0x10 */ BE(u32) mTotalDataSize;
+        /* 0x14 */ BE(u32) mMRamDataSize;
+        /* 0x18 */ BE(u32) mARamDataSize;
         u32 _1C;
     };
 
     struct RarcInfoBlock {
-        /* 0x0 */ u32 mNrDirs;
-        /* 0x4 */ u32 mDirOffset;
-        /* 0x8 */ u32 mNrFiles;
-        /* 0xC */ u32 mFileOffset;
-        /* 0x10 */ u32 mStringTableSize;
-        /* 0x14 */ u32 mStringTableOffset;
-        /* 0x18 */ u16 mNextAvailableFileID;
-        /* 0x1A */ u16 mFileIDIsIndex;
+        /* 0x0 */ BE(u32) mNrDirs;
+        /* 0x4 */ BE(u32) mDirOffset;
+        /* 0x8 */ BE(u32) mNrFiles;
+        /* 0xC */ BE(u32) mFileOffset;
+        /* 0x10 */ BE(u32) mStringTableSize;
+        /* 0x14 */ BE(u32) mStringTableOffset;
+        /* 0x18 */ BE(u16) mNextAvailableFileID;
+        /* 0x1A */ BE(u16) mFileIDIsIndex;
         /* 0x1C */ u32 _1C;
     };
 
     struct SDIFileEntry {
-        /* 0x0 */ u16 mFileID;
-        /* 0x2 */ u16 mHash;
+        /* 0x0 */ BE(u16) mFileID;
+        /* 0x2 */ BE(u16) mHash;
+#ifdef TARGET_PC
+        // `u32 mFlag : 8; u32 mNameOffset : 24;` as laid out by MWCC (from the
+        // most significant bit) in big-endian data.
+        union {
+            struct {
+                u8 b[4];
+                operator u32() const { return b[0]; }
+            } mFlag;
+            struct {
+                u8 b[4];
+                operator u32() const { return (u32)b[1] << 16 | (u32)b[2] << 8 | b[3]; }
+            } mNameOffset;
+        };
+#else
         /* 0x4 */ u32 mFlag : 8;
         /* 0x5 */ u32 mNameOffset : 24;
+#endif
         union {
-            /* 0x8 */ u32 mDataOffset;
-            /* 0x8 */ u32 mDirIndex;
+            /* 0x8 */ BE(u32) mDataOffset;
+            /* 0x8 */ BE(u32) mDirIndex;
         };
         union {
-            /* 0xC */ u32 mDataSize;
+            /* 0xC */ BE(u32) mDataSize;
         };
-        void* /* 0x10 */ mFileData;
+        /* 0x10 */ PTR32(void) mFileData;
     };
 
     struct SDIDirEntry {
-        /* 0x0 */ u32 mID;
-        /* 0x4 */ u32 mNameOffset;
-        /* 0x8 */ u16 mHash;
-        /* 0xA */ u16 mNrFiles;
-        /* 0xC */ u32 mFirstFileIndex;
+        /* 0x0 */ BE(u32) mID;
+        /* 0x4 */ BE(u32) mNameOffset;
+        /* 0x8 */ BE(u16) mHash;
+        /* 0xA */ BE(u16) mNrFiles;
+        /* 0xC */ BE(u32) mFirstFileIndex;
     };
 
     struct SDirEntry {

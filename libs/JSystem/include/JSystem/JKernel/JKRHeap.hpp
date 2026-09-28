@@ -228,12 +228,12 @@ public:
 };
 
 #ifdef __MWERKS__
-void* operator new(u32, int);
-void* operator new(u32, JKRHeap*);
-void* operator new(u32, JKRHeap*, int);
-void* operator new[](u32, int);
+void* operator new(size_t, int);
+void* operator new(size_t, JKRHeap*);
+void* operator new(size_t, JKRHeap*, int);
+void* operator new[](size_t, int);
 
-void* operator new[](u32, JKRHeap*, int);
+void* operator new[](size_t, JKRHeap*, int);
 #endif
 
 inline void* JKRAllocFromHeap(JKRHeap* pHeap, u32 size, int alignment) {

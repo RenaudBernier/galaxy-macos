@@ -9,6 +9,10 @@
 #include <JSystem/JAudio2/JASHeapCtrl.hpp>
 #include <JSystem/JAudio2/JASOscillator.hpp>
 
+#ifdef TARGET_PC
+#define AUD_ME_TRACK_NODE_OFFSET 0x228
+#endif
+
 class AudMeTrack : public JASPoolAllocObject< AudMeTrack > {
 public:
     static const int OSC_NUM = 2;
@@ -65,7 +69,12 @@ public:
         /* 0x12 */ u8 mNoteRangeStart;
     };
 
+#ifdef TARGET_PC
+    // offsetof(AudMeTrack, mNode) on 64-bit hosts (checked below the class).
+    struct TList : JGadget::TLinkList< AudMeTrack, -AUD_ME_TRACK_NODE_OFFSET > {
+#else
     struct TList : JGadget::TLinkList< AudMeTrack, -384 > {
+#endif
         TList() : mCallbackRegistered(false) {
         }
 
@@ -299,3 +308,7 @@ public:
     /* 0x16C */ TTrackInfo mTrackInfo;
     /* 0x180 */ JGadget::TLinkListNode mNode;
 };
+
+#ifdef TARGET_PC
+static_assert(offsetof(AudMeTrack, mNode) == AUD_ME_TRACK_NODE_OFFSET, "update AUD_ME_TRACK_NODE_OFFSET");
+#endif

@@ -172,7 +172,7 @@ bool MarioRabbit::update() {
                 getPlayer()->mMovementStates.jumping = false;
             }
 
-            startPadVib(1UL);
+            startPadVib((u32)1);
             playEffect("共通着地普通");
             if (!_28) {
                 playSound("ホッパー跳ね返り");

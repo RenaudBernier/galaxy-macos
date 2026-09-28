@@ -49,7 +49,11 @@ struct JAUAudibleParam {
     }
 
     bool calcDoppler() const {
+#ifdef TARGET_PC
+        return (mAudibleSw >> 12 & 0xF) != 0;  // raw's top nibble on the Wii
+#else
         return (raw >> 28 & 0xF) != 0;
+#endif
     }
 
     u32 getDoppler() const {

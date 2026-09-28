@@ -242,7 +242,7 @@ void SpaceCocoon::exeFreeInvalid() {
 void SpaceCocoon::exeBindLand() {
     if (MR::isFirstStep(this)) {
         if (!isKinopioAttached()) {
-            MR::startBckPlayer("CocoonLand", 1L);
+            MR::startBckPlayer("CocoonLand", (s32)1);
             MR::startMultiActorCameraTargetOther(this, mCameraInfo, "ウェイト", CameraTargetArg(mCameraTargetMtx), -1);
             MR::startSound(mRider, "SE_PV_CATCH");
         } else {

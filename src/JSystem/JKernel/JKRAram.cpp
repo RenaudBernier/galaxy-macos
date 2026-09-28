@@ -115,7 +115,7 @@ JKRAramBlock* JKRAram::mainRamToAram(u8* buf, u32 bufSize, u32 alignedSize, JKRE
             return nullptr;
         }
         JKRDecompress(buf, reinterpret_cast< u8* >(allocatedMem), fileSize, 0);
-        JKRAramPcs(0, reinterpret_cast< uintptr_t >(allocatedMem), bufSize, alignedSize, block);
+        JKRAramPcs(0, PTR_TO_U32(allocatedMem), bufSize, alignedSize, block);
         JKRFreeToHeap(heap, allocatedMem);
         block = block == nullptr ? reinterpret_cast< JKRAramBlock* >(-1) : block;
         if (pSize != nullptr) {
@@ -136,7 +136,7 @@ JKRAramBlock* JKRAram::mainRamToAram(u8* buf, u32 bufSize, u32 alignedSize, JKRE
         bufSize = block->getAddress();
     }
 
-    JKRAramPcs(0, reinterpret_cast< uintptr_t >(buf), bufSize, alignedSize, block);
+    JKRAramPcs(0, PTR_TO_U32(buf), bufSize, alignedSize, block);
     block = block == nullptr ? reinterpret_cast< JKRAramBlock* >(-1) : block;
     if (pSize != nullptr) {
         *pSize = alignedSize;
@@ -155,7 +155,7 @@ u8* JKRAram::aramToMainRam(u32 address, u8* buf, u32 p3, JKRExpandSwitch expandS
     if (expandSwitch == EXPAND_SWITCH_UNKNOWN1) {
         u8 buffer[64];
         u8* bufPtr = reinterpret_cast< u8* >(ALIGN_NEXT(reinterpret_cast< uintptr_t >(buffer), 32));
-        JKRAramPcs(1, address, reinterpret_cast< uintptr_t >(bufPtr), sizeof(buffer) / 2, nullptr);
+        JKRAramPcs(1, address, PTR_TO_U32(bufPtr), sizeof(buffer) / 2, nullptr);
         compression = JKRCheckCompressed_noASR(bufPtr);
         expandSize = JKRDecompExpandSize(bufPtr);
     }
@@ -177,7 +177,7 @@ u8* JKRAram::aramToMainRam(u32 address, u8* buf, u32 p3, JKRExpandSwitch expandS
         if (szpSpace == nullptr) {
             return nullptr;
         } else {
-            JKRAramPcs(1, address, reinterpret_cast< uintptr_t >(szpSpace), p3, nullptr);
+            JKRAramPcs(1, address, PTR_TO_U32(szpSpace), p3, nullptr);
             if (p5 != 0 && p5 < expandSize)
                 expandSize = p5;
 
@@ -202,7 +202,7 @@ u8* JKRAram::aramToMainRam(u32 address, u8* buf, u32 p3, JKRExpandSwitch expandS
             return nullptr;
         } else {
             changeGroupIdIfNeed(r24, id);
-            JKRAramPcs(1, address, reinterpret_cast< uintptr_t >(r24), p3, nullptr);
+            JKRAramPcs(1, address, PTR_TO_U32(r24), p3, nullptr);
             if (pSize != nullptr) {
                 *pSize = p3;
             }
@@ -261,7 +261,7 @@ static inline u8* nextSrcData(u8* current) {
     if (transSize > transLeft)
         transSize = transLeft;
 
-    JKRAramPcs(1, static_cast< uintptr_t >((srcAddress + srcOffset)), (reinterpret_cast< uintptr_t >(dest) + left), ALIGN_NEXT(transSize, 0x20),
+    JKRAramPcs(1, static_cast< uintptr_t >((srcAddress + srcOffset)), (PTR_TO_U32(dest) + left), ALIGN_NEXT(transSize, 0x20),
                nullptr);
     srcOffset += transSize;
     transLeft -= transSize;
@@ -279,7 +279,7 @@ static inline u8* firstSrcData() {
     u32 size = szpEnd - buffer;
     u32 length = transLeft < size ? transLeft : size;
 
-    JKRAramPcs(1, srcAddress + srcOffset, reinterpret_cast< uintptr_t >(buffer), ALIGN_NEXT(length, 0x20), nullptr);
+    JKRAramPcs(1, srcAddress + srcOffset, PTR_TO_U32(buffer), ALIGN_NEXT(length, 0x20), nullptr);
 
     srcOffset += length;
     transLeft -= length;

@@ -1,6 +1,12 @@
 #include "Game/Scene/SceneNameObjListExecutor.hpp"
 #include "Game/Scene/SceneFunction.hpp"
 
+#ifdef TARGET_PC
+// MWCC compiled this as C++98, where -1 in a brace initialiser of an unsigned
+// field silently wraps (0xFFFF...); keep that.
+#pragma clang diagnostic ignored "-Wc++11-narrowing"
+#endif
+
 namespace {
     const CategoryListInitialTable cMovementListInitTable[] = {
         {

@@ -2,7 +2,7 @@
 #define NWC24STDAPI_H
 
 #include "revolution.h"
-#include <cstdio>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {

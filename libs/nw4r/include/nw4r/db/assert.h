@@ -16,13 +16,13 @@ namespace nw4r {
 
 #define NW4R_POINTER_ASSERT_AT(line, exp)                                                                                                            \
     NW4R_ASSERTMSG_AT(line,                                                                                                                          \
-                      ((reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 0xFF000000) == 0x80000000) ||                                \
-                          ((reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 0xFF800000) == 0x81000000) ||                            \
-                          ((reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 0xF8000000) == 0x90000000) ||                            \
-                          ((reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 0xFF000000) == 0xC0000000) ||                            \
-                          ((reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 0xFF800000) == 0xC1000000) ||                            \
-                          ((reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 0xF8000000) == 0xD0000000) ||                            \
-                          ((reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 0xFFFFC000) == 0xE0000000),                              \
+                      ((PTR_TO_U32(exp) & 0xFF000000) == 0x80000000) ||                                \
+                          ((PTR_TO_U32(exp) & 0xFF800000) == 0x81000000) ||                            \
+                          ((PTR_TO_U32(exp) & 0xF8000000) == 0x90000000) ||                            \
+                          ((PTR_TO_U32(exp) & 0xFF000000) == 0xC0000000) ||                            \
+                          ((PTR_TO_U32(exp) & 0xFF800000) == 0xC1000000) ||                            \
+                          ((PTR_TO_U32(exp) & 0xF8000000) == 0xD0000000) ||                            \
+                          ((PTR_TO_U32(exp) & 0xFFFFC000) == 0xE0000000),                              \
                       "NW4R:Pointer Error\n" #exp "(=%p) is not valid pointer.", (exp))
 
 #define NW4R_ASSERT_AT(line, exp) NW4R_ASSERTMSG_AT(line, (exp), "NW4R:Failed assertion " #exp)
@@ -30,7 +30,7 @@ namespace nw4r {
     NW4R_ASSERTMSG_AT(line, (exp) >= (min), #exp " is out of bounds(%d)\n%d <= " #exp " not satisfied.", static_cast< int >(exp),                    \
                       static_cast< int >(min))
 #define NW4R_ALIGN2_ASSERT_AT(line, exp)                                                                                                             \
-    NW4R_ASSERTMSG_AT(line, (reinterpret_cast< u32 >(reinterpret_cast< const void* >(exp)) & 1) == 0,                                                \
+    NW4R_ASSERTMSG_AT(line, (PTR_TO_U32(exp) & 1) == 0,                                                \
                       "NW4R:Alignment Error(0x%x)\n" #exp " must be aligned to 2 bytes boundary.", (exp))
 
 #define NW4R_REFERENCE_ASSERT_AT(line, ref) NW4R_POINTER_ASSERT_AT(line, &ref)

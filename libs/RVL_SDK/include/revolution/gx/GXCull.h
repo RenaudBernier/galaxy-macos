@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXCULL_H
 #define GXCULL_H
 
@@ -16,3 +19,4 @@ void GXSetCoPlanar(GXBool);
 #endif
 
 #endif // GXCULL_H
+#endif  // TARGET_PC && PORT_AURORA

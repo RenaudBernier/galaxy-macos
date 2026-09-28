@@ -56,7 +56,7 @@ namespace nw4r {
             };
 
             inline const char* GetStrTableStr(const void* pTable, int idx) {
-                const u32* offs = static_cast< const u32* >(pTable);
+                const BE(u32)* offs = static_cast< const BE(u32)* >(pTable);
                 const char* pool = static_cast< const char* >(pTable);
                 return &pool[offs[idx]];
             }
@@ -77,11 +77,17 @@ namespace nw4r {
             bool TestFileHeader(const res::BinaryFileHeader&, u32);
 
             inline bool TestFileVersion(const res::BinaryFileHeader& fileHeader) {
-                return (ut::BitExtract(fileHeader.version, 8, 8) == 0 && ut::BitExtract(fileHeader.version, 0, 8) >= 9);
+                return (ut::BitExtract< u16 >(fileHeader.version, 8, 8) == 0 && ut::BitExtract< u16 >(fileHeader.version, 0, 8) >= 9);
             }
 
             inline s32 GetSignatureInt(const char sig[4]) {
+#ifdef TARGET_PC
+                // Signatures compare against multi-character literals ('lyt1'),
+                // i.e. the big-endian reading of the four characters.
+                return static_cast< s32 >(PortReadBE32(sig));
+#else
                 return *reinterpret_cast< const s32* >(sig);
+#endif
             }
 
             inline u8 GetVtxColorElement(const ut::Color* pColors, u32 idx) {

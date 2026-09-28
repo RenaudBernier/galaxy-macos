@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXTRANSFORM_H
 #define GXTRANSFORM_H
 
@@ -42,3 +45,4 @@ static void GXSetViewportv(const f32* vp);
 #endif
 
 #endif  // GXTRANSFORM_H
+#endif  // TARGET_PC && PORT_AURORA

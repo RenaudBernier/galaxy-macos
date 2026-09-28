@@ -39,7 +39,7 @@ namespace nw4r {
             void* pMaterialBuf = Layout::AllocMemory(sizeof(Material));
 
             if (pMaterialBuf != NULL) {
-                const u32* const pMatOffsetTbl = detail::ConvertOffsToPtr< u32 >(rBlockSet.pMaterialList, sizeof(res::MaterialList));
+                const BE(u32)* const pMatOffsetTbl = detail::ConvertOffsToPtr< BE(u32) >(rBlockSet.pMaterialList, sizeof(res::MaterialList));
 
                 const res::Material* const pResMaterial =
                     detail::ConvertOffsToPtr< res::Material >(rBlockSet.pMaterialList, pMatOffsetTbl[pRes->materialIdx]);

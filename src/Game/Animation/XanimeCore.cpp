@@ -389,13 +389,13 @@ void XanimeCore::calcScaleBlendMaya(const TVec3f& rScale, const TVec3f& rTransla
         }
 
         if (mTransformList[joint]._68 != 0) {
-            PSMTXConcat(pMtx, reinterpret_cast< MtxPtr >(mTransformList[joint]._68), pMtx);
+            PSMTXConcat(pMtx, U32_TO_PTR(MtxPtr, mTransformList[joint]._68), pMtx);
         }
     }
 
     if (mTransformList != nullptr && mTransformList[joint]._4 != 0xFFFF && mTransformList[mTransformList[joint]._4]._68 != 0) {
         Mtx inverse;
-        PSMTXInverse(reinterpret_cast< MtxPtr >(mTransformList[mTransformList[joint]._4]._68), inverse);
+        PSMTXInverse(U32_TO_PTR(MtxPtr, mTransformList[mTransformList[joint]._4]._68), inverse);
         PSMTXConcat(inverse, pMtx, pMtx);
     }
 
@@ -562,7 +562,7 @@ void XanimeCore::calcScaleBlendSI(const TVec3f& rScale, const TVec3f& rTranslate
         }
 
         if (mTransformList[joint]._68 != 0) {
-            PSMTXConcat(pMtx, reinterpret_cast< MtxPtr >(mTransformList[joint]._68), pMtx);
+            PSMTXConcat(pMtx, U32_TO_PTR(MtxPtr, mTransformList[joint]._68), pMtx);
         }
     }
 

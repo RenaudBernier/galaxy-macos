@@ -12,16 +12,17 @@ public:
     /* 0x20 */ s32 mCount;
 };
 
+// Message flow node (BMG FLW1 entry); big-endian file data.
 class TalkNode {
 public:
     /* 0x0 */ u8 mNodeType;
     /* 0x1 */ u8 mGroupID;
-    /* 0x2 */ u16 mIndex;
+    /* 0x2 */ BE(u16) mIndex;
     union {
-        /* 0x4 */ u32 mUnknown;
+        /* 0x4 */ BE(u32) mUnknown;
         struct {
-            /* 0x4 */ u16 mNextIdx;
-            /* 0x6 */ u16 mNextGroup;
+            /* 0x4 */ BE(u16) mNextIdx;
+            /* 0x6 */ BE(u16) mNextGroup;
         };
     };
 };

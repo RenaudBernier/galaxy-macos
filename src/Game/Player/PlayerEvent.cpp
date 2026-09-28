@@ -41,8 +41,9 @@ void EventSequencer::movement() {
 }
 
 void EventSequencer::startEvent(const char* pName) {
-    EventSequence* sequence;
-    if (mHashTable->search(pName, reinterpret_cast< u32* >(&sequence))) {
+    u32 sequenceAddr;
+    if (mHashTable->search(pName, &sequenceAddr)) {
+        EventSequence* sequence = U32_TO_PTR(EventSequence*, sequenceAddr);
         mSequence = sequence;
         mSequenceFrame = 0;
         sequence->clearFlag();

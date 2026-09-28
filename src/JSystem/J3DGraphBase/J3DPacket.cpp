@@ -81,6 +81,12 @@ u32 J3DDisplayListObj::endPatch() {
     return mSize;
 }
 
+#ifdef TARGET_PC
+// The base packet draws nothing (not present in the decompilation).
+void J3DPacket::draw() {
+}
+#endif
+
 int J3DPacket::entry(J3DDrawBuffer* pBuffer) {
     return 1;
 }

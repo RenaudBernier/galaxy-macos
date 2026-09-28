@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXTEXTURE_H
 #define GXTEXTURE_H
 
@@ -41,3 +44,4 @@ void GXSetTexCoordScaleManually(GXTexCoordID coord, GXBool enable, u16 ss, u16 t
 #endif
 
 #endif // GXTEXTURE_H
+#endif  // TARGET_PC && PORT_AURORA

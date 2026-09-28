@@ -7,6 +7,25 @@
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
 #include <JSystem/JSupport/JSUMemoryOutputStream.hpp>
 
+namespace {
+    // Multi-byte values in save data records are big-endian (the Wii layout).
+    inline u16 readSaveU16(const u8* p) {
+#ifdef TARGET_PC
+        return PortReadBE16(p);
+#else
+        return *(u16*)p;
+#endif
+    }
+
+    inline void writeSaveU16(u8* p, u16 value) {
+#ifdef TARGET_PC
+        PortWriteBE16(p, value);
+#else
+        *(u16*)p = value;
+#endif
+    }
+}  // namespace
+
 enum SpinDriverDataFlag {
     SpinDriverDataFlag_Interrupted = 0b10000000,
     SpinDriverDataFlag_Complete = 0b01000000,
@@ -147,7 +166,7 @@ s32 SpinDriverPathStorageScenario::serialize(u8* pData, u32 dataSize) const {
 
     u16 blockSize = size + 3;
     *(pData + size + 2) = SpinDriverScenarioDataFlag_EndOfData;
-    *(u16*)(pData + 0) = blockSize;
+    writeSaveU16(pData + 0, blockSize);
     return blockSize;
 }
 
@@ -224,29 +243,29 @@ s32 SpinDriverPathStorageGalaxy::serialize(u8* pData, u32 maxBufferSize) const {
         size += mScenarioStorage[idx].serialize(pData + size + 6, maxBufferSize - size - 6);
     }
 
-    *(u16*)(pData + 0) = MR::getHashCode(mGalaxyName);
+    writeSaveU16(pData + 0, MR::getHashCode(mGalaxyName));
     u16 blockSize = size + 6;
-    *(u16*)(pData + 2) = blockSize;
+    writeSaveU16(pData + 2, blockSize);
     *(u8*)(pData + 4) = mNumScenarios;
     *(u8*)(pData + 5) = 0;
     return blockSize;
 }
 
 s32 SpinDriverPathStorageGalaxy::deserialize(const u8* pData, u32 maxBufferSize) {
-    if (*(u16*)(pData + 0) != (u16)MR::getHashCode(mGalaxyName)) {
-        return *(u16*)(pData + 2);
+    if (readSaveU16(pData + 0) != (u16)MR::getHashCode(mGalaxyName)) {
+        return readSaveU16(pData + 2);
     }
 
     if (*(u8*)(pData + 4) != mNumScenarios) {
         resetAllData();
-        return *(u16*)(pData + 2);
+        return readSaveU16(pData + 2);
     }
 
     s32 size = 0;
     for (s32 idx = 0; idx < mNumScenarios; idx++) {
         size += mScenarioStorage[idx].deserialize((u8*)(pData + size + 6), maxBufferSize - size - 6);
     }
-    return *(u16*)(pData + 2);
+    return readSaveU16(pData + 2);
 }
 
 SpinDriverPathStorage::SpinDriverPathStorage() {
@@ -300,13 +319,13 @@ s32 SpinDriverPathStorage::deserialize(const u8* pData, u32 maxBufferSize) {
 
     for (s32 idx = 0; idx < numEntries; idx++) {
         u8* readPtr = (u8*)stream.mBuffer + stream.mPosition;
-        SpinDriverPathStorageGalaxy* storage = findFromHashCode(*(u16*)readPtr);
+        SpinDriverPathStorageGalaxy* storage = findFromHashCode(readSaveU16(readPtr));
         if (storage != nullptr) {
             storage->deserialize((u8*)stream.mBuffer + stream.mPosition, maxBufferSize - stream.mPosition);
         } else {
             readError = 1;
         }
-        stream.seek(*(u16*)(readPtr + 2), SEEK_FROM_POSITION);
+        stream.seek(readSaveU16(readPtr + 2), SEEK_FROM_POSITION);
     }
 
     return readError ? 1 : 0;

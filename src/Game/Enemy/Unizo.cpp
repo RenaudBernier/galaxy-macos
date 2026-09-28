@@ -205,7 +205,7 @@ void Unizo::init(const JMapInfoIter& rIter) {
     initNerve(GET_NERVE(Unizo, UnizoNrvWait));
     MR::onCalcGravity(this);
     MR::startBtp(this, "Blink");
-    mBlinkFrame = MR::getRandom(100L, 200L);
+    mBlinkFrame = MR::getRandom((s32)100, (s32)200);
     MR::addToAttributeGroupSearchTurtle(this);
     MR::declareStarPiece(this, ::sStarPieceNum);
     mAnimScaleController = new AnimScaleController(nullptr);

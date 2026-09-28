@@ -95,8 +95,8 @@ bool JAUDynamicSeqDataBlocks::appendDynamicSeqDataBlock(JAUSeqDataBlock* seqData
     return 1;
 }
 
-static void JAUDynamicSeqDataBlocks_receiveLoaded_(u32 param_0, uintptr_t param_1) {
-    JSULink< JAUSeqDataBlock >* link = (JSULink< JAUSeqDataBlock >*)param_1;
+static void JAUDynamicSeqDataBlocks_receiveLoaded_(u32 param_0, u32 param_1) {
+    JSULink< JAUSeqDataBlock >* link = U32_TO_PTR(JSULink< JAUSeqDataBlock >*, param_1);
     JAUSeqDataBlock* seqDataBlock = link->getObject();
     if (param_0 != 0) {
         seqDataBlock->field_0x1c = 2;
@@ -132,7 +132,7 @@ bool JAUDynamicSeqDataBlocks::loadDynamicSeq(JAISoundID param_0, bool param_1, J
         link->getObject()->field_0x1c = 1;
         field_0xc.append(link);
         JASResArcLoader::loadResourceAsync(mSeqDataArchive, resourceId, link->getObject()->region.addr, link->getObject()->region.size,
-                                           JAUDynamicSeqDataBlocks_receiveLoaded_, (uintptr_t)link);
+                                           JAUDynamicSeqDataBlocks_receiveLoaded_, PTR_TO_U32(link));
     }
     return true;
 }

@@ -13,21 +13,109 @@
 
 J3DModelLoader::J3DModelLoader()
     : mpModelData(NULL), mpMaterialTable(NULL), mpShapeBlock(NULL), mpMaterialBlock(NULL), mpModelHierarchy(NULL), field_0x18(0), mEnvelopeSize(0) {
-    /* empty function */
+#ifdef TARGET_PC
+    mHostOrder = false;
+#endif
 }
+
+#ifdef TARGET_PC
+// Model files are big-endian. Structures read only by the loader/factories use
+// BE() fields; arrays that the CPU and the GPU read directly at runtime
+// (vertex attributes, envelope/draw tables, shape descriptors) are converted
+// to host byte order in place, once per file. The file header padding
+// ("SVR3" block at 0x10) records that the conversion was done, since the same
+// resource can be loaded several times.
+namespace {
+
+const u32 kHostOrderMarker = 0x50434C45;  // 'PCLE'
+
+bool isHostOrder(const void* data) {
+    return PortReadBE32((const u8*)data + 0x18) == kHostOrderMarker;
+}
+
+void setHostOrder(const void* data) {
+    PortWriteBE32((u8*)data + 0x18, kHostOrderMarker);
+}
+
+// Extent of the section at `offset` in a block whose sections are given by
+// `offsets`: up to the next section, or to the end of the block.
+u32 sectionSize(const J3DModelBlock* block, const J3DFileOffset* offsets, int count, u32 offset) {
+    u32 end = block->mBlockSize;
+    for (int i = 0; i < count; i++) {
+        const u32 o = offsets[i];
+        if (o > offset && o < end) {
+            end = o;
+        }
+    }
+    return end - offset;
+}
+
+void swapUnits(void* data, u32 size, u32 unit) {
+    switch (unit) {
+    case 2:
+        PortSwap16Array(data, size / 2);
+        break;
+    case 3:
+        // 24-bit packed values (GX_RGBA6).
+        for (u8* p = (u8*)data; p + 3 <= (u8*)data + size; p += 3) {
+            const u8 t = p[0];
+            p[0] = p[2];
+            p[2] = t;
+        }
+        break;
+    case 4:
+        PortSwap32Array(data, size / 4);
+        break;
+    default:
+        break;
+    }
+}
+
+u32 compUnit(GXCompType type) {
+    switch (type) {
+    case GX_U16:
+    case GX_S16:
+        return 2;
+    case GX_F32:
+        return 4;
+    default:
+        return 1;
+    }
+}
+
+u32 colorUnit(GXCompType type) {
+    switch (type) {
+    case GX_RGB565:
+    case GX_RGBA4:
+        return 2;
+    case GX_RGBA6:
+        return 3;
+    default:
+        return 1;  // GX_RGB8 / GX_RGBX8 / GX_RGBA8 are byte arrays
+    }
+}
+
+}  // namespace
+#endif
+
+#ifdef TARGET_PC
+#define J3D_FILE_MAGIC(data, i) PortReadBE32((const u8*)(data) + (i) * 4)
+#else
+#define J3D_FILE_MAGIC(data, i) (reinterpret_cast< const u32* >(data)[i])
+#endif
 
 J3DModelData* J3DModelLoaderDataBase::load(void const* i_data, u32 i_flags) {
     if (i_data == NULL) {
         return NULL;
     }
-    if (*(u32*)i_data == 'J3D1' && *(u32*)((uintptr_t)i_data + 4) == 'bmd1') {
+    if (J3D_FILE_MAGIC(i_data, 0) == 'J3D1' && J3D_FILE_MAGIC(i_data, 1) == 'bmd1') {
         return NULL;
     }
-    if (*(u32*)i_data == 'J3D2' && *(u32*)((uintptr_t)i_data + 4) == 'bmd2') {
+    if (J3D_FILE_MAGIC(i_data, 0) == 'J3D2' && J3D_FILE_MAGIC(i_data, 1) == 'bmd2') {
         J3DModelLoader_v21 loader;
         return loader.load(i_data, i_flags);
     }
-    if (*(u32*)i_data == 'J3D2' && *(u32*)((uintptr_t)i_data + 4) == 'bmd3') {
+    if (J3D_FILE_MAGIC(i_data, 0) == 'J3D2' && J3D_FILE_MAGIC(i_data, 1) == 'bmd3') {
         J3DModelLoader_v26 loader;
         return loader.load(i_data, i_flags);
     }
@@ -38,7 +126,7 @@ J3DMaterialTable* J3DModelLoaderDataBase::loadMaterialTable(const void* data) {
     if (data == NULL) {
         return NULL;
     }
-    if (reinterpret_cast< const u32* >(data)[0] == 'J3D2' && reinterpret_cast< const u32* >(data)[1] == 'bmt3') {
+    if (J3D_FILE_MAGIC(data, 0) == 'J3D2' && J3D_FILE_MAGIC(data, 1) == 'bmt3') {
         J3DModelLoader_v26 loader;
         return loader.loadMaterialTable(data);
     }
@@ -49,8 +137,7 @@ J3DModelData* J3DModelLoaderDataBase::loadBinaryDisplayList(const void* data, u3
     if (data == NULL) {
         return NULL;
     }
-    if (reinterpret_cast< const u32* >(data)[0] == 'J3D2' &&
-        (reinterpret_cast< const u32* >(data)[1] == 'bdl3' || reinterpret_cast< const u32* >(data)[1] == 'bdl4')) {
+    if (J3D_FILE_MAGIC(data, 0) == 'J3D2' && (J3D_FILE_MAGIC(data, 1) == 'bdl3' || J3D_FILE_MAGIC(data, 1) == 'bdl4')) {
         J3DModelLoader_v26 loader;
         return loader.loadBinaryDisplayList(data, flags);
     }
@@ -58,6 +145,9 @@ J3DModelData* J3DModelLoaderDataBase::loadBinaryDisplayList(const void* data, u3
 }
 
 J3DModelData* J3DModelLoader::load(void const* i_data, u32 i_flags) {
+#ifdef TARGET_PC
+    mHostOrder = isHostOrder(i_data);
+#endif
     JKRGetCurrentHeap()->getTotalFreeSize();
     mpModelData = new J3DModelData();
     mpModelData->clear();
@@ -110,6 +200,9 @@ J3DModelData* J3DModelLoader::load(void const* i_data, u32 i_flags) {
             mpModelData->getShapeNodePointer(shape_no)->onFlag(0x200);
         }
     }
+#ifdef TARGET_PC
+    setHostOrder(i_data);
+#endif
     return mpModelData;
 }
 
@@ -141,6 +234,9 @@ J3DMaterialTable* J3DModelLoader::loadMaterialTable(void const* i_data) {
 }
 
 J3DModelData* J3DModelLoader::loadBinaryDisplayList(void const* i_data, u32 i_flags) {
+#ifdef TARGET_PC
+    mHostOrder = isHostOrder(i_data);
+#endif
     mpModelData = new J3DModelData();
     mpModelData->clear();
     mpModelData->mpRawData = i_data;
@@ -198,6 +294,9 @@ J3DModelData* J3DModelLoader::loadBinaryDisplayList(void const* i_data, u32 i_fl
     mpModelData->getJointTree().findImportantMtxIndex();
     setupBBoardInfo();
     mpModelData->indexToPtr();
+#ifdef TARGET_PC
+    setHostOrder(i_data);
+#endif
     return mpModelData;
 }
 
@@ -206,7 +305,7 @@ void J3DModelLoader::setupBBoardInfo() {
         J3DMaterial* mesh = mpModelData->getJointNodePointer(i)->getMesh();
         if (mesh != NULL) {
             u32 shape_index = mesh->getShape()->getIndex();
-            u16* index_table = JSUConvertOffsetToPtr< u16 >(mpShapeBlock, (uintptr_t)mpShapeBlock->mpIndexTable);
+            BE(u16)* index_table = JSUConvertOffsetToPtr< BE(u16) >(mpShapeBlock, (uintptr_t)mpShapeBlock->mpIndexTable);
             J3DShapeInitData* shape_init_data = JSUConvertOffsetToPtr< J3DShapeInitData >(mpShapeBlock, (uintptr_t)mpShapeBlock->mpShapeInitData);
             J3DJoint* joint;
             switch (shape_init_data[index_table[shape_index]].mShapeMtxType) {
@@ -268,7 +367,62 @@ static _GXCompType getFmtType(_GXVtxAttrFmtList* i_fmtList, _GXAttr i_attr) {
     return GX_F32;
 }
 
+#ifdef TARGET_PC
+static void J3DSwapVertexBlock(J3DVertexBlock const* i_block) {
+    const J3DFileOffset* offsets = &i_block->mpVtxAttrFmtList;
+    const int offsetNum = 13;
+
+    // Attribute format list: {u32 attr, u32 cnt, u32 type, u8 frac, pad[3]} until GX_VA_NULL.
+    u8* fmt = JSUConvertOffsetToPtr< u8 >(i_block, i_block->mpVtxAttrFmtList);
+    if (fmt == NULL) {
+        return;
+    }
+    for (u8* e = fmt;; e += 0x10) {
+        PortSwap32Array(e, 3);
+        if (*(u32*)e == GX_VA_NULL) {
+            break;
+        }
+    }
+    const GXVtxAttrFmtList* fmtList = (const GXVtxAttrFmtList*)fmt;
+    auto findFmt = [&](GXAttr attr, GXCompType* type) {
+        for (const GXVtxAttrFmtList* f = fmtList; f->attr != GX_VA_NULL; f++) {
+            if (f->attr == attr) {
+                *type = f->type;
+                return true;
+            }
+        }
+        return false;
+    };
+    auto swapArray = [&](const J3DFileOffset& off, GXAttr attr, bool isColor) {
+        const u32 o = off;
+        if (o == 0) {
+            return;
+        }
+        GXCompType type = GX_F32;
+        if (!findFmt(attr, &type) && attr == GX_VA_NBT) {
+            findFmt(GX_VA_NRM, &type);
+        }
+        swapUnits((u8*)i_block + o, sectionSize(i_block, offsets, offsetNum, o), isColor ? colorUnit(type) : compUnit(type));
+    };
+
+    swapArray(i_block->mpVtxPosArray, GX_VA_POS, false);
+    swapArray(i_block->mpVtxNrmArray, GX_VA_NRM, false);
+    swapArray(i_block->mpVtxNBTArray, GX_VA_NBT, false);
+    for (int i = 0; i < 2; i++) {
+        swapArray(i_block->mpVtxColorArray[i], (GXAttr)(GX_VA_CLR0 + i), true);
+    }
+    for (int i = 0; i < 8; i++) {
+        swapArray(i_block->mpVtxTexCoordArray[i], (GXAttr)(GX_VA_TEX0 + i), false);
+    }
+}
+#endif
+
 void J3DModelLoader::readVertex(J3DVertexBlock const* i_block) {
+#ifdef TARGET_PC
+    if (!mHostOrder) {
+        J3DSwapVertexBlock(i_block);
+    }
+#endif
     J3DVertexData& vertex_data = mpModelData->getVertexData();
     vertex_data.mVtxAttrFmtList = JSUConvertOffsetToPtr< GXVtxAttrFmtList >(i_block, i_block->mpVtxAttrFmtList);
     vertex_data.mVtxPosArray = JSUConvertOffsetToPtr< void >(i_block, i_block->mpVtxPosArray);
@@ -280,6 +434,24 @@ void J3DModelLoader::readVertex(J3DVertexBlock const* i_block) {
     for (int i = 0; i < 8; i++) {
         vertex_data.mVtxTexCoordArray[i] = JSUConvertOffsetToPtr< void >(i_block, i_block->mpVtxTexCoordArray[i]);
     }
+#ifdef TARGET_PC
+    {
+        const J3DFileOffset* offsets = &i_block->mpVtxAttrFmtList;
+        auto arraySize = [&](const J3DFileOffset& o) -> u32 {
+            const u32 off = o;
+            return off != 0 ? sectionSize(i_block, offsets, 13, off) : 0;
+        };
+        vertex_data.mVtxArrSize[GX_VA_POS - GX_VA_POS] = arraySize(i_block->mpVtxPosArray);
+        vertex_data.mVtxArrSize[GX_VA_NRM - GX_VA_POS] = arraySize(i_block->mpVtxNrmArray);
+        for (int i = 0; i < 2; i++) {
+            vertex_data.mVtxArrSize[GX_VA_CLR0 - GX_VA_POS + i] = arraySize(i_block->mpVtxColorArray[i]);
+        }
+        for (int i = 0; i < 8; i++) {
+            vertex_data.mVtxArrSize[GX_VA_TEX0 - GX_VA_POS + i] = arraySize(i_block->mpVtxTexCoordArray[i]);
+        }
+        vertex_data.mVtxArrSize[12] = arraySize(i_block->mpVtxNBTArray);
+    }
+#endif
 
     _GXCompType nrm_type = getFmtType(vertex_data.mVtxAttrFmtList, GX_VA_NRM);
     u32 nrm_size = nrm_type == GX_F32 ? 12 : 6;
@@ -324,6 +496,23 @@ void J3DModelLoader::readVertex(J3DVertexBlock const* i_block) {
 }
 
 void J3DModelLoader::readEnvelop(J3DEnvelopeBlock const* i_block) {
+#ifdef TARGET_PC
+    if (!mHostOrder) {
+        const J3DFileOffset* offsets = &i_block->mpWEvlpMixMtxNum;
+        const u32 index = i_block->mpWEvlpMixIndex;
+        const u32 weight = i_block->mpWEvlpMixWeight;
+        const u32 invMtx = i_block->mpInvJointMtx;
+        if (index != 0) {
+            swapUnits((u8*)i_block + index, sectionSize(i_block, offsets, 4, index), 2);
+        }
+        if (weight != 0) {
+            swapUnits((u8*)i_block + weight, sectionSize(i_block, offsets, 4, weight), 4);
+        }
+        if (invMtx != 0) {
+            swapUnits((u8*)i_block + invMtx, sectionSize(i_block, offsets, 4, invMtx), 4);
+        }
+    }
+#endif
     mpModelData->getJointTree().mWEvlpMtxNum = i_block->mWEvlpMtxNum;
     mpModelData->getJointTree().mWEvlpMixMtxNum = JSUConvertOffsetToPtr< u8 >(i_block, i_block->mpWEvlpMixMtxNum);
     mpModelData->getJointTree().mWEvlpMixMtxIndex = JSUConvertOffsetToPtr< u16 >(i_block, i_block->mpWEvlpMixIndex);
@@ -332,6 +521,14 @@ void J3DModelLoader::readEnvelop(J3DEnvelopeBlock const* i_block) {
 }
 
 void J3DModelLoader::readDraw(J3DDrawBlock const* i_block) {
+#ifdef TARGET_PC
+    if (!mHostOrder) {
+        const u32 index = i_block->mpDrawMtxIndex;
+        if (index != 0) {
+            swapUnits((u8*)i_block + index, sectionSize(i_block, &i_block->mpDrawMtxFlag, 2, index), 2);
+        }
+    }
+#endif
     u16 i;
     J3DModelData* modelData = mpModelData;
     modelData->getJointTree().mDrawMtxData.mEntryNum = i_block->mMtxNum - mpModelData->getJointTree().mWEvlpMtxNum;
@@ -433,6 +630,21 @@ void J3DModelLoader_v21::readMaterial_v21(J3DMaterialBlock_v21 const* i_block, u
 }
 
 void J3DModelLoader::readShape(J3DShapeBlock const* i_block, u32 i_flags) {
+#ifdef TARGET_PC
+    if (!mHostOrder) {
+        // Vertex descriptor lists ({u32 attr, u32 type} pairs) are handed to
+        // GXSetVtxDescv and the matrix table is read by J3DShapeMtxMulti.
+        const J3DFileOffset* offsets = &i_block->mpShapeInitData;
+        const u32 vtxDesc = i_block->mpVtxDescList;
+        const u32 mtxTable = i_block->mpMtxTable;
+        if (vtxDesc != 0) {
+            swapUnits((u8*)i_block + vtxDesc, sectionSize(i_block, offsets, 8, vtxDesc), 4);
+        }
+        if (mtxTable != 0) {
+            swapUnits((u8*)i_block + mtxTable, sectionSize(i_block, offsets, 8, mtxTable), 2);
+        }
+    }
+#endif
     mpShapeBlock = i_block;
     J3DShapeTable* shape_table = mpModelData->getShapeTable();
     J3DShapeFactory factory(*i_block);

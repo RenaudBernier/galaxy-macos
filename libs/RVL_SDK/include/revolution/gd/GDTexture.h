@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gd.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GDTEXTURE_H
 #define GDTEXTURE_H
 
@@ -98,3 +101,4 @@
 #define BP_TEX_CACHE_ODD(tmem, size0, size1, id) ((u32)(tmem) << 0 | (u32)(size0) << 15 | (u32)(size1) << 18 | (u32)(id) << 24)
 
 #endif  // GDTEXTURE_H
+#endif  // TARGET_PC && PORT_AURORA

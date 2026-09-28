@@ -19,7 +19,7 @@ enum {
 
 J3DShapeFactory::J3DShapeFactory(J3DShapeBlock const& block) {
     mShapeInitData = JSUConvertOffsetToPtr< J3DShapeInitData >(&block, (uintptr_t)block.mpShapeInitData);
-    mIndexTable = JSUConvertOffsetToPtr< u16 >(&block, (uintptr_t)block.mpIndexTable);
+    mIndexTable = JSUConvertOffsetToPtr< BE(u16) >(&block, (uintptr_t)block.mpIndexTable);
     mVtxDescList = JSUConvertOffsetToPtr< GXVtxDescList >(&block, (uintptr_t)block.mpVtxDescList),
     mMtxTable = JSUConvertOffsetToPtr< u16 >(&block, (uintptr_t)block.mpMtxTable);
     mDisplayListData = JSUConvertOffsetToPtr< u8 >(&block, (uintptr_t)block.mpDisplayListData),

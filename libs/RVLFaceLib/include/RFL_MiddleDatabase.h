@@ -16,7 +16,12 @@ typedef enum {
 } RFLMiddleDBType;
 
 typedef struct RFLMiddleDB {
+#ifdef TARGET_PC
+    // Opaque storage for RFLiMiddleDB, which holds host pointers.
+    u64 dummy[0x28 / 8];
+#else
     u8 dummy[0x18];
+#endif
 } RFLMiddleDB;
 
 u32 RFLGetMiddleDBBufferSize(u16 size);

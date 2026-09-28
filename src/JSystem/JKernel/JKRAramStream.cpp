@@ -100,7 +100,7 @@ s32 JKRAramStream::writeToAram(JKRAramStreamCommand* command) {
                 break;
             }
 
-            JKRAramPcs(0, (uintptr_t)buffer, destination, length, NULL);
+            JKRAramPcs(0, PTR_TO_U32(buffer), destination, length, NULL);
             dstSize -= length;
             offset += length;
             writtenLength += length;
@@ -117,7 +117,7 @@ s32 JKRAramStream::writeToAram(JKRAramStreamCommand* command) {
         }
     }
 
-    OSSendMessage(&command->mMessageQueue, (OSMessage)writtenLength, OS_MESSAGE_NOBLOCK);
+    OSSendMessage(&command->mMessageQueue, (OSMessage)(uintptr_t)writtenLength, OS_MESSAGE_NOBLOCK);
     return writtenLength;
 }
 

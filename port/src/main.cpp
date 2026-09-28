@@ -1,0 +1,158 @@
+// Host entry point for the macOS port.
+//
+//   "Super Mario Galaxy" <path to RMGK01 disc image (.iso/.rvz/.wbfs/...)>
+//
+// or set SMG_DISC. Boot order matters:
+//   1. reserve the game's memory next to the executable (before anything else
+//      can map pages there),
+//   2. bring up Aurora (window, GPU) and the disc,
+//   3. switch the main thread onto its stack inside the emulated Wii address
+//      window and run the game's main().
+
+#include "os/scheduler.hpp"
+#include "port/dol_data.hpp"
+#include "port/frame.hpp"
+#include "port/log.hpp"
+#include "port/memory.hpp"
+
+#include <aurora/aurora.h>
+#include <aurora/dvd.h>
+#include <aurora/main.h>
+#include <dolphin/gx.h>
+
+#include <sys/mman.h>
+
+#include <cstdlib>
+#include <cstring>
+#include <string>
+
+extern "C" void GameMain(void);
+
+namespace port::os {
+void initArenas();
+}
+
+namespace port::macos {
+void configureApplication();
+}
+
+namespace {
+
+// Memory sizes. The Wii has 24MB MEM1 and 64MB MEM2; host objects are larger
+// (64-bit pointers), so the arenas are generously sized.
+constexpr uint32_t kMem1Size = 64u << 20;
+constexpr uint32_t kMem2Size = 256u << 20;
+constexpr uint32_t kMainStackSize = 8u << 20;
+
+OSThread sDefaultThread;
+
+void auroraLog(AuroraLogLevel level, const char* module, const char* message, unsigned int len) {
+    using port::log::Level;
+    static const Level kMap[] = {Level::Debug, Level::Info, Level::Warn, Level::Error, Level::Fatal};
+    port::log::write(kMap[level], module, std::string(message, len));
+    if (level == LOG_FATAL) {
+        abort();
+    }
+}
+
+void dvdDispatch(void (*fn)(void*), void* arg) {
+    port::os::postInterrupt([fn, arg] { fn(arg); });
+}
+
+// Pre-built display lists address textures/TLUTs by Wii physical address;
+// physical addresses are offsets into the emulated Wii address window.
+const void* resolvePhysical(u32 physicalAddress) {
+    if (physicalAddress == 0 || physicalAddress >= 0x80000000u) {
+        return nullptr;
+    }
+    return PortU32ToPtr(0x80000000u + physicalAddress);
+}
+
+void runGame(void*) {
+    const auto& l = port::mem::layout();
+    void* stackBase = reinterpret_cast<void*>(l.mainStack + kMainStackSize);
+    void* stackEnd = reinterpret_cast<void*>(l.mainStack);
+    port::os::initScheduler(&sDefaultThread, stackBase, stackEnd);
+    port::frame::init();
+    port::frame::beginFirstFrame();
+    PORT_INFO("main", "starting game");
+    GameMain();
+    PORT_INFO("main", "game main returned");
+}
+
+}  // namespace
+
+// Runs fn(arg) on another stack (arm64 AAPCS). The frame record chain is
+// preserved so debuggers can unwind across the switch.
+extern "C" void port_call_on_stack(void (*fn)(void*), void* arg, void* stackTop);
+asm(R"(
+    .text
+    .p2align 2
+    .globl _port_call_on_stack
+_port_call_on_stack:
+    stp x29, x30, [sp, #-16]!
+    mov x29, sp
+    mov x9, sp
+    and x2, x2, #~15
+    mov sp, x2
+    stp x9, x29, [sp, #-16]!
+    mov x10, x0
+    mov x0, x1
+    blr x10
+    ldp x9, x29, [sp], #16
+    mov sp, x9
+    ldp x29, x30, [sp], #16
+    ret
+)");
+
+int main(int argc, char** argv) {
+    if (getenv("SMG_DEBUG") != nullptr) {
+        port::log::setMinLevel(port::log::Level::Debug);
+    }
+
+    const char* disc = argc > 1 ? argv[1] : getenv("SMG_DISC");
+    if (disc == nullptr || *disc == '\0') {
+        fprintf(stderr,
+                "usage: %s <disc image>\n"
+                "  A disc image of Super Mario Galaxy (Korea, RMGK01) is required (.iso, .rvz, .wbfs, ...).\n"
+                "  Alternatively set SMG_DISC.\n",
+                argv[0]);
+        return 2;
+    }
+
+    if (!port::mem::init(kMem1Size, kMem2Size, kMainStackSize)) {
+        return 1;
+    }
+    port::macos::configureApplication();
+
+    AuroraConfig config{};
+    config.appName = "Super Mario Galaxy";
+    config.desiredBackend = BACKEND_AUTO;
+    config.vsync = false;  // the VI retrace timer paces frames
+    config.windowWidth = 1280;
+    config.windowHeight = 720;
+    config.logCallback = auroraLog;
+    config.logLevel = LOG_INFO;
+    config.mem1Size = 0;  // the port manages game memory itself
+    config.mem2Size = 0;
+    aurora_initialize(argc, argv, &config);
+
+    GXSetAuroraPhysicalResolver(resolvePhysical);
+    aurora_dvd_set_callback_dispatcher(dvdDispatch);
+    if (!aurora_dvd_open(disc)) {
+        PORT_FATAL("main", "could not open disc image {}", disc);
+        return 1;
+    }
+    if (!port::dol::loadEmbeddedData(disc)) {
+        return 1;
+    }
+    port::os::initArenas();
+
+    // Guard page below the main game stack.
+    const auto& l = port::mem::layout();
+    mprotect(reinterpret_cast<void*>(l.mainStack), 16384, PROT_NONE);
+    port_call_on_stack(runGame, nullptr, reinterpret_cast<void*>(l.mainStack + kMainStackSize));
+
+    aurora_shutdown();
+    return 0;
+}

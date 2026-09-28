@@ -74,6 +74,17 @@ bool JKRHeap::initArena(char** memory, u32* size, int maxHeaps) {
     }
 
     arenaStart = OSInitAlloc(arenaLo, arenaHi, maxHeaps);
+#ifdef TARGET_PC
+    // PORT: hw - there is no OSBootInfo at physical 0 on the host.
+    ramStart = U32_TO_PTR(void*, (PTR_TO_U32(arenaStart) + 31) & 0xFFFFFFE0);
+    ramEnd = U32_TO_PTR(void*, PTR_TO_U32(arenaHi) & 0xFFFFFFE0);
+
+    JKRHeap::mCodeStart = U32_TO_PTR(void*, OS_BASE_CACHED);
+    JKRHeap::mCodeEnd = ramStart;
+    JKRHeap::mUserRamStart = ramStart;
+    JKRHeap::mUserRamEnd = ramEnd;
+    JKRHeap::mMemorySize = 0x01800000;  // MEM1 size reported by OSBootInfo on the Wii
+#else
     OSBootInfo* code = (OSBootInfo*)OSPhysicalToCached(0);
     ramStart = (void*)(((u32)arenaStart + 31) & 0xFFFFFFE0);
     ramEnd = (void*)((u32)arenaHi & 0xFFFFFFE0);
@@ -83,12 +94,13 @@ bool JKRHeap::initArena(char** memory, u32* size, int maxHeaps) {
     JKRHeap::mUserRamStart = ramStart;
     JKRHeap::mUserRamEnd = ramEnd;
     JKRHeap::mMemorySize = code->memorySize;
+#endif
 
     OSSetArenaLo(ramEnd);
     OSSetArenaHi(ramEnd);
 
     *memory = (char*)ramStart;
-    *size = (u32)ramEnd - (u32)ramStart;
+    *size = (u32)((u8*)ramEnd - (u8*)ramStart);
     return true;
 }
 
@@ -230,7 +242,7 @@ void JKRHeap::dispose_subroutine(u32 start, u32 end) {
     while ((link = it.mLink) != nullptr) {
         JKRDisposer* disp = link->getObject();
 
-        if (reinterpret_cast< void* >(start) <= disp && disp < reinterpret_cast< void* >(end)) {
+        if (U32_TO_PTR(void*, start) <= disp && disp < U32_TO_PTR(void*, end)) {
             disp->~JKRDisposer();
 
             if (last_it == nullptr) {
@@ -247,14 +259,14 @@ void JKRHeap::dispose_subroutine(u32 start, u32 end) {
 }
 
 bool JKRHeap::dispose(void* ptr, u32 size) {
-    u32 begin = (u32)ptr;
-    u32 end = (u32)ptr + size;
+    u32 begin = PTR_TO_U32(ptr);
+    u32 end = PTR_TO_U32(ptr) + size;
     dispose_subroutine(begin, end);
     return false;
 }
 
 void JKRHeap::dispose(void* begin, void* end) {
-    dispose_subroutine((u32)begin, (u32)end);
+    dispose_subroutine(PTR_TO_U32(begin), PTR_TO_U32(end));
 }
 
 void JKRHeap::dispose() {
@@ -281,6 +293,12 @@ void JKRHeap::copyMemory(void* pDst, void* pSrc, u32 size) {
 }
 
 void JKRDefaultMemoryErrorRoutine(void* pHeap, u32 size, int alignment) {
+#ifdef TARGET_PC
+    JKRHeap* heap = static_cast< JKRHeap* >(pHeap);
+    OSReport("JKRHeap: out of memory allocating %u bytes (align %d) from heap %p (largest free block %d, total free %d)\n",
+             size, alignment, pHeap, heap != nullptr ? heap->getFreeSize() : 0,
+             heap != nullptr ? heap->getTotalFreeSize() : 0);
+#endif
     JUTException::panic(__FILE__, 0x355, "abort\n");
 }
 
@@ -295,30 +313,50 @@ JKRErrorHandler JKRHeap::setErrorHandler(JKRErrorHandler errorHandler) {
     return prev;
 }
 
-void* operator new(u32 size) {
+#ifdef TARGET_PC
+// On the host, the global operator new/delete are defined by the port layer,
+// which sends allocations made by game code here and everything else (SDL,
+// Aurora, the C++ runtime) to the host allocator.
+extern "C" void* JKRHeap_PortNew(size_t size) {
     return JKRHeap::alloc(size, 4, nullptr);
 }
 
-void* operator new(u32 size, int align) {
-    return JKRHeap::alloc(size, align, nullptr);
+extern "C" void JKRHeap_PortFree(void* pData) {
+    JKRHeap::free(pData, nullptr);
 }
 
-void* operator new(u32 size, JKRHeap* pHeap, int align) {
-    return JKRHeap::alloc(size, align, pHeap);
+extern "C" int JKRHeap_PortIsReady(void) {
+    return JKRHeap::sCurrentHeap != nullptr;
 }
-
-void* operator new[](u32 size) {
+#else
+void* operator new(size_t size) {
     return JKRHeap::alloc(size, 4, nullptr);
 }
+#endif
 
-void* operator new[](u32 size, int align) {
+void* operator new(size_t size, int align) {
     return JKRHeap::alloc(size, align, nullptr);
 }
 
-void* operator new[](u32 size, JKRHeap* pHeap, int align) {
+void* operator new(size_t size, JKRHeap* pHeap, int align) {
     return JKRHeap::alloc(size, align, pHeap);
 }
 
+#ifndef TARGET_PC
+void* operator new[](size_t size) {
+    return JKRHeap::alloc(size, 4, nullptr);
+}
+#endif
+
+void* operator new[](size_t size, int align) {
+    return JKRHeap::alloc(size, align, nullptr);
+}
+
+void* operator new[](size_t size, JKRHeap* pHeap, int align) {
+    return JKRHeap::alloc(size, align, pHeap);
+}
+
+#ifndef TARGET_PC
 void operator delete(void* pData) {
     JKRHeap::free(pData, nullptr);
 }
@@ -326,6 +364,7 @@ void operator delete(void* pData) {
 void operator delete[](void* pData) {
     JKRHeap::free(pData, nullptr);
 }
+#endif
 
 void JKRHeap::state_register(TState*, u32) const {
     return;

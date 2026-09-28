@@ -62,7 +62,7 @@ public:
 
     virtual bool deleteStreamAram(u32 addr) {
         for (s32 i = 0; i < Base::mSize; i++) {
-            if (Base::mBits.test(i) && addr == (u32)Base::mHeaps[i].mBase) {
+            if (Base::mBits.test(i) && addr == PTR_TO_U32(Base::mHeaps[i].mBase)) {
                 Base::mBits.reset(i);
                 return true;
             }

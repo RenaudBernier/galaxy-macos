@@ -104,7 +104,7 @@ bool JKRCompArchive::open(s32 entryNum) {
                 JKRDvdToMainRam(entryNum, (u8*)mInfoBlock, EXPAND_SWITCH_UNKNOWN1, (uintptr_t)arcHeader->mFileDataOffset + mSizeOfMemPart, NULL,
                                 JKRDvdRipper::ALLOC_DIRECTION_FORWARD, 0x20, NULL, NULL);
                 DCInvalidateRange(mInfoBlock, (uintptr_t)arcHeader->mFileDataOffset + mSizeOfMemPart);
-                field_0x64 = (uintptr_t)mInfoBlock + arcHeader->mFileDataOffset;
+                field_0x64 = PTR_TO_U32(mInfoBlock) + arcHeader->mFileDataOffset;
 
                 if (mSizeOfAramPart != 0) {
                     mAramPart = (JKRAramBlock*)JKRAllocFromAram(mSizeOfAramPart, JKRAramHeap::HEAD);
@@ -150,7 +150,7 @@ bool JKRCompArchive::open(s32 entryNum) {
                     } else {
                         // arcHeader + 1 should lead to 0x20, which is the data after the header
                         JKRHeap::copyMemory((u8*)mInfoBlock, arcHeader + 1, (arcHeader->mFileDataOffset + mSizeOfMemPart));
-                        field_0x64 = (uintptr_t)mInfoBlock + arcHeader->mFileDataOffset;
+                        field_0x64 = PTR_TO_U32(mInfoBlock) + arcHeader->mFileDataOffset;
                         if (mSizeOfAramPart != 0) {
                             mAramPart = (JKRAramBlock*)JKRAllocFromAram(mSizeOfAramPart, JKRAramHeap::HEAD);
                             if (mAramPart == NULL) {
@@ -216,7 +216,7 @@ void* JKRCompArchive::fetchResource(SDIFileEntry* fileEntry, u32* pSize) {
     if (fileEntry->mFileData == NULL) {
         u32 flag = fileEntry->mFlag;
         if (flag & 0x10) {
-            fileEntry->mFileData = (void*)(field_0x64 + fileEntry->mDataOffset);
+            fileEntry->mFileData = U32_TO_PTR(void*, field_0x64 + fileEntry->mDataOffset);  // PORT: file-reloc
             *pSize = size;
         } else if (flag & 0x20) {
             u8* data;
@@ -270,7 +270,7 @@ void* JKRCompArchive::fetchResource(void* data, u32 compressedSize, SDIFileEntry
         size = fileSize;
     } else {
         if (fileFlag & 0x10) {
-            size = JKRMemArchive::fetchResource_subroutine((u8*)(field_0x64 + fileEntry->mDataOffset), alignedSize, (u8*)data, compressedSize & ~31,
+            size = JKRMemArchive::fetchResource_subroutine(U32_TO_PTR(u8*, field_0x64 + fileEntry->mDataOffset), alignedSize, (u8*)data, compressedSize & ~31,
                                                            compression);
         } else if (fileFlag & 0x20) {
             size = JKRAramArchive::fetchResource_subroutine(fileEntry->mDataOffset + mAramPart->getAddress() - mSizeOfMemPart, alignedSize, (u8*)data,

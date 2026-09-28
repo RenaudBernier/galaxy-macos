@@ -75,8 +75,17 @@ FunctionAsyncExecutor::FunctionAsyncExecutor() : mMainThreadExec(nullptr), mHold
     }
 
     mMainThreadExec = new FunctionAsyncExecutorOnMainThread(OSGetCurrentThread());
+#ifdef TARGET_PC
+    // Room for 256 exec infos and their functors, sized for 64-bit objects
+    // (the Wii sizes assume 0x34-byte infos and 12-byte functors).
+    _410 = JKRUnitHeap::create(sizeof(FunctionAsyncExecInfo),
+                               sizeof(JKRUnitHeap) + 0x40 + 256 * ALIGN_NEXT(sizeof(FunctionAsyncExecInfo), 8), 8,
+                               MR::getCurrentHeap(), false);
+    _414 = JKRExpHeap::create(0x2800 * 2, MR::getCurrentHeap(), false);
+#else
     _410 = JKRUnitHeap::create(0x34, 0x34A8, 4, MR::getCurrentHeap(), false);
     _414 = JKRExpHeap::create(0x2800, MR::getCurrentHeap(), false);
+#endif
 }
 
 void FunctionAsyncExecutor::update() {

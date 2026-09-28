@@ -31,7 +31,13 @@ void MiiFacePartsHolder::init(const JMapInfoIter& rIter) {
     JKRMemArchive* pArchive = MR::receiveArchive("/ObjectData/MiiFaceDatabase.arc");
     void* pResBuffer = pArchive->getResource("/RFL_Res.dat");
     u32 resSize = pArchive->getResSize(pResBuffer);
+#ifdef TARGET_PC
+    // The Mii library's resource parsing and face rendering are not ported
+    // yet: run as if the Mii library were unavailable (no Mii faces).
+    _38 = RFLErrcode_NotAvailable;
+#else
     _38 = RFLInitResAsync(mRFLWorkBuffer, pResBuffer, resSize, false);
+#endif
 
     MR::connectToScene(this, MR::MovementType_None, MR::CalcAnimType_NPC, MR::DrawBufferType_None, MR::DrawType_MiiFacePartsHolder);
     MR::connectToScene(MR::createDrawAdaptor("Miiモデル再作成", MR::Functor(this, &MiiFacePartsHolder::reinitCharModel)), MR::MovementType_None,

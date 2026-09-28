@@ -65,7 +65,7 @@ void JASDriver::initAI(void (*param_0)(void)) {
     sDspStatus = 0;
     JASChannel::initBankDisposeMsgQueue();
     AIInit(nullptr);
-    AIInitDMA((uintptr_t)sDmaDacBuffer[2], size);
+    AIInitDMA(PTR_TO_U32(sDmaDacBuffer[2]), size);
     BOOL isOutputRate;
     if (sOutputRate == 0) {
         isOutputRate = FALSE;
@@ -110,7 +110,7 @@ void JASDriver::updateDac() {
     s16* r30 = lastRspMadep;
     lastRspMadep = nullptr;
     if (r30) {
-        AIInitDMA((uintptr_t)r30, getDacSize() * 2);
+        AIInitDMA(PTR_TO_U32(r30), getDacSize() * 2);
     }
     s32 frameSamples = getFrameSamples();
     readDspBuffer(sDmaDacBuffer[dacp], frameSamples);
@@ -200,7 +200,8 @@ void JASDriver::finishDSPFrame() {
     JASAudioThread::setDSPSyncCount(getSubFrames());
     JASProbe::start(7, "DSP-MAIN");
     u32 r27 = getFrameSamples();
-    JASDsp::syncFrame(getSubFrames(), u32(sDspDacBuffer[sDspDacWriteBuffer]), u32(sDspDacBuffer[sDspDacWriteBuffer] + r27));
+    // PORT: hw
+    JASDsp::syncFrame(getSubFrames(), PTR_TO_U32(sDspDacBuffer[sDspDacWriteBuffer]), PTR_TO_U32(sDspDacBuffer[sDspDacWriteBuffer] + r27));
     sDspStatus = 1;
     updateDSP();
     if (sDspDacCallback) {

@@ -111,7 +111,12 @@ public:
         initialize();
     }
 
+#ifdef TARGET_PC
+    // Aurora's sized array-base commands carry 64-bit pointers and sizes.
+    static const int kVcdVatDLSize = 0x180;
+#else
     static const int kVcdVatDLSize = 0xC0;
+#endif
 
     void initialize();
     void addTexMtxIndexInDL(_GXAttr, u32);

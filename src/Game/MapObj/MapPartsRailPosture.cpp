@@ -60,7 +60,13 @@ void MapPartsRailPosture::exeMove() {
         TVec3f v9(0.0f, 1.0f, 0.0f);
         TVec3f v8(0.0f, 0.0f, 1.0f);
 
+#ifdef TARGET_PC
+        // The decomp tests the member function's address (always true), which
+        // would make the mMovePosture == 2 branch below dead; call it instead.
+        if (mMovePosture == 1 || isPostureTypeRailDirRailUseShadowGravity()) {
+#else
         if (mMovePosture == 1 || isPostureTypeRailDirRailUseShadowGravity) {
+#endif
             v9.set(-shadowVector);
             v10.cross(v9, v11);
             MR::normalize(&v10);

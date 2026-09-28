@@ -89,6 +89,26 @@ public:
         }
     }
 
+#ifdef TARGET_PC
+    // BAS sound animations are big-endian file data; keep the Wii layout.
+    JAISoundID getSoundID() const {
+        return JAISoundID((u32)mSoundID);
+    }
+
+    /* 0x00 */ BE(u32) mSoundID;
+    /* 0x04 */ BE(f32) mNoteOnTime;
+    /* 0x08 */ BE(f32) mNoteOffTime;
+    /* 0x0C */ BE(f32) mBasePitch;
+    /* 0x10 */ BE(u32) mFlags;
+    /* 0x14 */ u8 mBaseVolume;
+    /* 0x15 */ s8 mPitchDelta;
+    /* 0x16 */ u8 mPlayTime;
+    /* 0x17 */ u8 mBasePan;
+    /* 0x18 */ s8 mVolumeDelta;
+    /* 0x19 */ u8 mRepeatInterval;
+    /* 0x1A */ s8 _1A;
+    /* 0x1C */ BE(u32) _1C;
+#else
     JAISoundID getSoundID() const {
         return mSoundID;
     }
@@ -119,6 +139,7 @@ public:
     /* 0x19 */ u8 mRepeatInterval;
     /* 0x1A */ s8 _1A;
     /* 0x1C */ u32 _1C;
+#endif
 };
 
 class JAUSoundAnimation;
@@ -150,10 +171,20 @@ public:
         }
     }
 
+#ifdef TARGET_PC
+    /* 0x0 */ BE(u16) mNumSounds;
+    /* 0x4 */ PTR32(JAUSoundAnimationControl) mControl;
+#else
     /* 0x0 */ u16 mNumSounds;
     /* 0x4 */ JAUSoundAnimationControl* mControl;
+#endif
     /* 0x8 */ JAUSoundAnimationSound mSounds;
 };
+
+#ifdef TARGET_PC
+static_assert(sizeof(JAUSoundAnimationSound) == 0x20, "BAS sound entry must keep the Wii layout");
+static_assert(__builtin_offsetof(JAUSoundAnimation, mSounds) == 0x8, "BAS header must keep the Wii layout");
+#endif
 
 class JAUSoundAnimator {
 public:

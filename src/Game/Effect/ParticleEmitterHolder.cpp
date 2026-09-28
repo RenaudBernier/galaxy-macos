@@ -97,6 +97,11 @@ inline bool ParticleEmitter::isValid() const {
     return mEmitter != nullptr;
 }
 
+#ifdef TARGET_PC
+// Called from other translation units; must be emitted out of line.
+bool ParticleEmitter::isContinuousParticle() const {
+#else
 inline bool ParticleEmitter::isContinuousParticle() const NO_INLINE {
+#endif
     return mEmitter != nullptr && mEmitter->mMaxFrame == 0;
 }

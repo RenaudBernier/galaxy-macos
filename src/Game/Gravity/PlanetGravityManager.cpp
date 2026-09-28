@@ -33,7 +33,7 @@ bool PlanetGravityManager::calcTotalGravityVector(TVec3f* pGravity, GravityInfo*
         }
 
         // Gravity is valid, matches specified gravity type(s) and does not have same host
-        if (validGravity && ((gravityType & (*pGravities)->mGravityType) != 0) && (host != (u32)(*pGravities)->mHost)) {
+        if (validGravity && ((gravityType & (*pGravities)->mGravityType) != 0) && (host != PTR_TO_U32((*pGravities)->mHost))) {
             // Is priority lower -> end of list reached as it's sorted in descending order
             s32 priority = (*pGravities)->mPriority;
 

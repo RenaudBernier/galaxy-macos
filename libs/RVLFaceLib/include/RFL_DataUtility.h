@@ -3,7 +3,7 @@
 #include "RFL_Types.h"
 #include <revolution/gx.h>
 #include <revolution/types.h>
-#include <cstdio>
+#include <stdio.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

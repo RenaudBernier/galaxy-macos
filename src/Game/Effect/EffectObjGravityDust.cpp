@@ -28,7 +28,15 @@ f32 EffectObjGravityDust::getClippingRadius() const {
 }
 
 TVec3f* EffectObjGravityDust::getClippingCenterOffset() const {
+#ifdef TARGET_PC
+    // The original returns the address of a temporary (dangling; it only works
+    // because the caller reads it immediately). Keep the value alive instead.
+    static TVec3f sOffset;
+    sOffset.set(0.0f, 500.0f * mScale.y, 0.0f);
+    return &sOffset;
+#else
     return &(TVec3f(0.0f, 500.0f * mScale.y, 0.0f));
+#endif
 }
 
 EffectObjGravityDust::~EffectObjGravityDust() {

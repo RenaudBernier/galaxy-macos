@@ -247,7 +247,18 @@ bool CameraAnim::loadBin(u8* pFile) {
 
     u32 valueOffset = pHeader->mValueOffset;
 
+#ifdef TARGET_PC
+    mNrValues = PortReadBE32(&pEntry[valueOffset]) / sizeof(f32);
+    // The value table is indexed directly; convert it once per resource.
+    // Header word 0x14 is unused by the game and marks converted data.
+    const s32 kConvertedMark = 0x504F5254;
+    if (pHeader->_14 != kConvertedMark) {
+        PortSwap32Array(&pEntry[valueOffset + 4], mNrValues);
+        pHeader->_14 = kConvertedMark;
+    }
+#else
     mNrValues = *(reinterpret_cast< u32* >(&pEntry[valueOffset])) / sizeof(f32);
+#endif
 
     mFileDataAccessor->set(pEntry, pEntry + valueOffset + 4);
 

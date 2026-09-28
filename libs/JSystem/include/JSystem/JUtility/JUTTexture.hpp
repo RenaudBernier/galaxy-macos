@@ -4,17 +4,24 @@
 
 class JUTPalette;
 
+// Texture header (BTI / J3D TEX1 / JPA textures); big-endian file data.
 struct ResTIMG {
     /* 0x00 */ u8 mFormat;
     /* 0x01 */ u8 mTransparency;
-    /* 0x02 */ u16 mWidth;
-    /* 0x04 */ u16 mHeight;
+    /* 0x02 */ BE(u16) mWidth;
+    /* 0x04 */ BE(u16) mHeight;
     /* 0x06 */ u8 mWrapS;
     /* 0x07 */ u8 mWrapT;
     /* 0x08 */ u8 mPaletteName;
     /* 0x09 */ u8 mPaletteFormat;
-    /* 0x0A */ u16 mPaletteNum;
+    /* 0x0A */ BE(u16) mPaletteNum;
+#ifdef TARGET_PC
+    // Offsets from this header; runtime-built textures can point before it
+    // (32-bit wraparound on the Wii), so they are signed here.
+    /* 0x0C */ BE(s32) mPaletteDataOffset;
+#else
     /* 0x0C */ u32 mPaletteDataOffset;
+#endif
     /* 0x10 */ bool mMipmap;
     /* 0x11 */ bool mDoEdgeLod;
     /* 0x12 */ bool mBiasClamp;
@@ -25,8 +32,12 @@ struct ResTIMG {
     /* 0x17 */ u8 mMaxLod;
     /* 0x18 */ u8 mImageNum;
     /* 0x19 */ u8 _19;
-    /* 0x1A */ s16 mLodBias;
+    /* 0x1A */ BE(s16) mLodBias;
+#ifdef TARGET_PC
+    /* 0x1C */ BE(s32) mImageDataOffset;
+#else
     /* 0x1C */ u32 mImageDataOffset;
+#endif
 };
 
 class JUTTexture {
@@ -68,7 +79,7 @@ public:
     void initTexObj();
     void initTexObj(_GXTlut);
     void load(_GXTexMapID);
-    void capture(int, int, GXTexFmt, bool, u8);
+    void capture(int, int, GXTexFmt, bool, GXBool);
     static void captureDolTexture(void*, int, int, int, int, bool, GXTexFmt);
 
     const ResTIMG* getTexInfo() const {

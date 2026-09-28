@@ -1,3 +1,10 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+// Host build: the DVD API (disc images via nod) is provided by Aurora; its
+// structure layouts must be used so both sides agree.
+#include <revolution/types.h>
+#include <dolphin/dvd.h>
+#include <port/rvl_dvd.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef DVD_H
 #define DVD_H
 
@@ -304,3 +311,4 @@ s32 DVDGetDriveStatus(void);
 #endif
 
 #endif  // DVD_H
+#endif  // TARGET_PC && PORT_AURORA

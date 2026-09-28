@@ -229,7 +229,7 @@ void MarioActor::doTrampleJump(HitSensor* pSensor) {
         _988 = 0;
         trampleJump(getConst().getTable()->mTrampleBegoma, getConst().getTable()->mTrampleLong);
         changeAnimationNonStop("ヘリコプタージャンプ");
-        mMario->startPadVib(2UL);
+        mMario->startPadVib((u32)2);
         playSound("ヘリコプタージャンプ", -1);
         mMario->startRotationTask(4);
         mMario->_430 = 11;
@@ -320,7 +320,7 @@ void MarioActor::trampleJump(f32 normal, f32 extra) {
 
     playSound("声踏み", -1);
     playEffect("ふみつぶし");
-    mMario->startPadVib(0UL);
+    mMario->startPadVib((u32)0);
     mMario->mMovementStates._2F = false;
     mMario->mMovementStates._22 = false;
     mMario->mMovementStates._3E = 0;

@@ -1,3 +1,10 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+// Host build: the GD API is provided by Aurora.
+#include <revolution/types.h>
+#include <dolphin/gd.h>
+#include <revolution/gx.h>
+#include <port/rvl_gd.h>
+#else  // TARGET_PC && PORT_AURORA
 #include "revolution/gd/GDBase.h"
 #include "revolution/gd/GDGeometry.h"
 #include "revolution/gx.h"
@@ -37,3 +44,4 @@ void GDSetFog(GXFogType, f32, f32, f32, f32, GXColor);
 #ifdef __cplusplus
 }
 #endif
+#endif  // TARGET_PC && PORT_AURORA

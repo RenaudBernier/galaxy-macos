@@ -1,3 +1,9 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+// Host build: matrix library provided by Aurora.
+#include <revolution/types.h>
+#include <dolphin/mtx.h>
+#include <port/rvl_mtx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef MTX_H
 #define MTX_H
 
@@ -102,3 +108,4 @@ void C_MTXLightOrtho(Mtx m, f32 t, f32 b, f32 l, f32 r, f32 scaleS, f32 scaleT, 
 #endif
 
 #endif  // MTX_H
+#endif  // TARGET_PC && PORT_AURORA

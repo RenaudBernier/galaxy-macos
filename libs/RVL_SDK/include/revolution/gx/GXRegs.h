@@ -26,7 +26,7 @@ extern "C" {
 
 #ifdef __MWERKS__
 extern volatile PPCWGPipe gxfifo : 0xCC008000;
-#else
+#elif !defined(PORT_AURORA)
 extern volatile PPCWGPipe gxfifo;
 #endif
 extern volatile void* __piReg;
@@ -39,6 +39,14 @@ extern volatile void* __memReg;
 
 /* GX fifo write helpers */
 
+#ifdef PORT_AURORA
+// Host: FIFO writes go into Aurora's command stream.
+#define GX_WRITE_U8(ub) GXCmd1u8((u8)(ub))
+#define GX_WRITE_U16(us) GXCmd1u16((u16)(us))
+#define GX_WRITE_S16(us) GXCmd1u16((u16)(us))
+#define GX_WRITE_U32(ui) GXCmd1u32((u32)(ui))
+#define GX_WRITE_F32(f) GXCmd1f32((f32)(f));
+#else
 #define GX_WRITE_U8(ub) gxfifo.u8 = (u8)(ub)
 
 #define GX_WRITE_U16(us) gxfifo.u16 = (u16)(us)
@@ -48,6 +56,7 @@ extern volatile void* __memReg;
 #define GX_WRITE_U32(ui) gxfifo.u32 = (u32)(ui)
 
 #define GX_WRITE_F32(f) gxfifo.f32 = (f32)(f);
+#endif
 
 #define GX_PI_REG_WRITE_U32(a, d) *(vu32*)((vu8*)__piReg + (a)) = (u32)(d)
 

@@ -345,7 +345,11 @@ void RaceManager::exeRace() {
         }
     }
 
+#ifdef TARGET_PC
+    msl::sort(&mRacer[mRank], &mRacer[mRacerNum], AbstractRacer::compRacer);
+#else
     std::sort(&mRacer[mRank], &mRacer[mRacerNum], AbstractRacer::compRacer);
+#endif
 }
 
 void RaceManager::exeDemo() {

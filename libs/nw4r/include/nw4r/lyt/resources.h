@@ -7,6 +7,80 @@
 namespace nw4r {
     namespace lyt {
         namespace res {
+            // Resource structures are overlaid on (big-endian) BRLYT/BRLAN data.
+            // Multi-byte values use BE(T); the Res* aggregate types below are the
+            // big-endian twins of the runtime types, converting on read.
+#ifdef TARGET_PC
+            struct ResVEC2 {
+                BE(f32) x;
+                BE(f32) y;
+                operator math::VEC2() const { return math::VEC2(x, y); }
+            };
+
+            struct ResVEC3 {
+                BE(f32) x;
+                BE(f32) y;
+                BE(f32) z;
+                operator math::VEC3() const { return math::VEC3(x, y, z); }
+            };
+
+            struct ResSize {
+                BE(f32) width;
+                BE(f32) height;
+                operator Size() const { return Size(width, height); }
+            };
+
+            struct ResInflationLRTB {
+                BE(f32) l;
+                BE(f32) r;
+                BE(f32) t;
+                BE(f32) b;
+                operator InflationLRTB() const {
+                    InflationLRTB v;
+                    v.l = l;
+                    v.r = r;
+                    v.t = t;
+                    v.b = b;
+                    return v;
+                }
+            };
+
+            struct ResColorS10 {
+                BE(s16) r;
+                BE(s16) g;
+                BE(s16) b;
+                BE(s16) a;
+                operator GXColorS10() const {
+                    GXColorS10 v;
+                    v.r = r;
+                    v.g = g;
+                    v.b = b;
+                    v.a = a;
+                    return v;
+                }
+            };
+
+            struct ResTexSRT {
+                ResVEC2 translate;
+                BE(f32) rotate;
+                ResVEC2 scale;
+                operator TexSRT() const {
+                    TexSRT v;
+                    v.translate = translate;
+                    v.rotate = rotate;
+                    v.scale = scale;
+                    return v;
+                }
+            };
+#else
+            typedef math::VEC2 ResVEC2;
+            typedef math::VEC3 ResVEC3;
+            typedef Size ResSize;
+            typedef InflationLRTB ResInflationLRTB;
+            typedef GXColorS10 ResColorS10;
+            typedef TexSRT ResTexSRT;
+#endif
+
             const u32 FILESIGNATURE_RLYT = 'RLYT';
 
             const u32 DATABLOCKKIND_LAYOUT = 'lyt1';
@@ -47,52 +121,58 @@ namespace nw4r {
 
             struct BinaryFileHeader {
                 char signature[4];
-                u16 byteOrder;
-                u16 version;
-                u32 fileSize;
-                u16 headerSize;
-                u16 dataBlocks;
+                BE(u16) byteOrder;
+                BE(u16) version;
+                BE(u32) fileSize;
+                BE(u16) headerSize;
+                BE(u16) dataBlocks;
             };
 
             struct DataBlockHeader {
                 char kind[4];
-                u32 size;
+                BE(u32) size;
             };
 
             struct Layout {
                 DataBlockHeader blockHeader;
                 u8 originType;
                 u8 padding[3];
-                Size layoutSize;
+                ResSize layoutSize;
             };
 
             struct Font {
-                u32 nameStrOffset;
+                BE(u32) nameStrOffset;
                 u8 type;
                 u8 padding[3];
             };
 
             struct FontList {
                 DataBlockHeader blockHeader;
-                u16 fontNum;
+                BE(u16) fontNum;
                 u8 padding[2];
             };
 
             struct Texture {
-                u32 nameStrOffset;
+                BE(u32) nameStrOffset;
                 u8 type;
                 u8 padding[3];
             };
 
             struct TextureList {
                 DataBlockHeader blockHeader;
-                u16 texNum;
+                BE(u16) texNum;
                 u8 padding[2];
             };
 
             struct TexMap {
+#ifdef TARGET_PC
+                TexMap() : wrapSflt(0), wrapTflt(0) {
+                    texIdx = 0;
+                }
+#else
                 TexMap() : texIdx(0), wrapSflt(0), wrapTflt(0) {
                 }
+#endif
 
                 GXTexWrapMode GetWarpModeS() const {
                     return GXTexWrapMode(detail::GetBits(wrapSflt, 0, 2));
@@ -134,14 +214,14 @@ namespace nw4r {
                     detail::SetBits(&wrapTflt, 2, bitLen, bitData);
                 }
 
-                u16 texIdx;
+                BE(u16) texIdx;
                 u8 wrapSflt;
                 u8 wrapTflt;
             };
 
             struct MaterialList {
                 DataBlockHeader blockHeader;
-                u16 materialNum;
+                BE(u16) materialNum;
                 u8 padding[2];
             };
 
@@ -153,154 +233,154 @@ namespace nw4r {
                 u8 padding;
                 char name[16];
                 char userData[8];
-                math::VEC3 translate;
-                math::VEC3 rotate;
-                math::VEC2 scale;
-                Size size;
+                ResVEC3 translate;
+                ResVEC3 rotate;
+                ResVEC2 scale;
+                ResSize size;
             };
 
             struct Picture : Pane {
-                u32 vtxCols[4];
-                u16 materialIdx;
+                BE(u32) vtxCols[4];
+                BE(u16) materialIdx;
                 u8 texCoordNum;
                 u8 padding[1];
             };
 
             struct TextBox : Pane {
-                u16 textBufBytes;
-                u16 textStrBytes;
-                u16 materialIdx;
-                u16 fontIdx;
+                BE(u16) textBufBytes;
+                BE(u16) textStrBytes;
+                BE(u16) materialIdx;
+                BE(u16) fontIdx;
                 u8 textPosition;
                 u8 textAlignment;
                 u8 padding[2];
-                u32 textStrOffset;
-                u32 textCols[2];
-                Size fontSize;
-                f32 charSpace;
-                f32 lineSpace;
+                BE(u32) textStrOffset;
+                BE(u32) textCols[2];
+                ResSize fontSize;
+                BE(f32) charSpace;
+                BE(f32) lineSpace;
             };
 
             struct WindowFrame {
-                u16 materialIdx;
+                BE(u16) materialIdx;
                 u8 textureFlip;
                 u8 padding1;
             };
 
             struct WindowContent {
-                u32 vtxCols[4];
-                u16 materialIdx;
+                BE(u32) vtxCols[4];
+                BE(u16) materialIdx;
                 u8 texCoordNum;
                 u8 padding[1];
             };
 
             struct Window : Pane {
-                InflationLRTB inflation;
+                ResInflationLRTB inflation;
                 u8 frameNum;
                 u8 padding1;
                 u8 padding2;
                 u8 padding3;
-                u32 contentOffset;
-                u32 frameOffsetTableOffset;
+                BE(u32) contentOffset;
+                BE(u32) frameOffsetTableOffset;
             };
 
             struct Bounding : Pane {};
 
             struct ExtUserDataList {
                 DataBlockHeader blockHeader;
-                detail::ResU16 num;
+                BE(detail::ResU16) num;
                 u8 padding[2];
             };
 
             struct Group {
                 DataBlockHeader blockHeader;
                 char name[16];
-                u16 paneNum;
+                BE(u16) paneNum;
                 u8 padding[2];
             };
 
             struct MaterialResourceNum {
                 u8 GetTexMapNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 0, 4));
+                    return u8(detail::GetBits< u32 >(bits, 0, 4));
                 }
 
                 u8 GetTexSRTNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 4, 4));
+                    return u8(detail::GetBits< u32 >(bits, 4, 4));
                 }
 
                 u8 GetTexCoordGenNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 8, 4));
+                    return u8(detail::GetBits< u32 >(bits, 8, 4));
                 }
 
                 bool HasTevSwapTable() const NO_INLINE {
-                    return detail::TestBit(bits, 12);
+                    return detail::TestBit< u32 >(bits, 12);
                 }
 
                 u8 GetIndTexSRTNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 13, 2));
+                    return u8(detail::GetBits< u32 >(bits, 13, 2));
                 }
 
                 u8 GetIndTexStageNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 15, 3));
+                    return u8(detail::GetBits< u32 >(bits, 15, 3));
                 }
 
                 u8 GetTevStageNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 18, 5));
+                    return u8(detail::GetBits< u32 >(bits, 18, 5));
                 }
 
                 bool HasAlphaCompare() const NO_INLINE {
-                    return detail::TestBit(bits, 23);
+                    return detail::TestBit< u32 >(bits, 23);
                 }
 
                 bool HasBlendMode() const NO_INLINE {
-                    return detail::TestBit(bits, 24);
+                    return detail::TestBit< u32 >(bits, 24);
                 }
 
                 u8 GetChanCtrlNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 25, 1));
+                    return u8(detail::GetBits< u32 >(bits, 25, 1));
                 }
 
                 u8 GetMatColNum() const NO_INLINE {
-                    return u8(detail::GetBits(bits, 27, 1));
+                    return u8(detail::GetBits< u32 >(bits, 27, 1));
                 }
 
-                u32 bits;
+                BE(u32) bits;
             };
 
             struct Material {
                 char name[20];
-                GXColorS10 tevCols[3];
+                ResColorS10 tevCols[3];
                 GXColor tevKCols[4];
                 MaterialResourceNum resNum;
             };
 
             struct AnimationTagBlock {
                 DataBlockHeader blockHeader;
-                detail::ResU16 tagOrder;
-                detail::ResU16 groupNum;
-                detail::ResU32 nameOffset;
-                detail::ResU32 groupsOffset;
-                detail::ResS16 startFrame;
-                detail::ResS16 endFrame;
+                BE(detail::ResU16) tagOrder;
+                BE(detail::ResU16) groupNum;
+                BE(detail::ResU32) nameOffset;
+                BE(detail::ResU32) groupsOffset;
+                BE(detail::ResS16) startFrame;
+                BE(detail::ResS16) endFrame;
                 u8 flag;
                 u8 padding[3];
             };
 
             struct AnimationShareBlock {
                 DataBlockHeader blockHeader;
-                detail::ResU32 animShareInfoOffset;
-                detail::ResU16 shareNum;
+                BE(detail::ResU32) animShareInfoOffset;
+                BE(detail::ResU16) shareNum;
                 u8 padding[2];
             };
 
             struct AnimationBlock {
                 DataBlockHeader blockHeader;
-                u16 frameSize;
+                BE(u16) frameSize;
                 u8 loop;
                 u8 padding1;
-                u16 fileNum;
-                u16 animContNum;
-                u32 animContOffsetsOffset;
+                BE(u16) fileNum;
+                BE(u16) animContNum;
+                BE(u32) animContOffsetsOffset;
             };
 
             struct AnimationContent {
@@ -312,7 +392,7 @@ namespace nw4r {
             };
 
             struct AnimationInfo {
-                u32 kind;
+                BE(u32) kind;
 
                 u8 num;
                 u8 padding[3];
@@ -324,21 +404,21 @@ namespace nw4r {
                 u8 curveType;
                 u8 padding1;
 
-                u16 keyNum;
+                BE(u16) keyNum;
                 u8 padding2[2];
 
-                u32 keysOffset;
+                BE(u32) keysOffset;
             };
 
             struct HermiteKey {
-                f32 frame;
-                f32 value;
-                f32 slope;
+                BE(f32) frame;
+                BE(f32) value;
+                BE(f32) slope;
             };
 
             struct StepKey {
-                f32 frame;
-                u16 value;
+                BE(f32) frame;
+                BE(u16) value;
                 u16 pad;
             };
         };  // namespace res

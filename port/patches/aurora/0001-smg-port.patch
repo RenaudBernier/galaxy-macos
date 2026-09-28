@@ -1,0 +1,621 @@
+diff --git a/include/aurora/dvd.h b/include/aurora/dvd.h
+index a352797..49862c9 100644
+--- a/include/aurora/dvd.h
++++ b/include/aurora/dvd.h
+@@ -20,6 +20,14 @@ bool aurora_dvd_open(const char* disc_path);
+  */
+ void aurora_dvd_close(void);
+ 
++/**
++ * Route DVD completion callbacks through the application. When set, Aurora
++ * calls `dispatcher(fn, arg)` instead of invoking a completion callback on its
++ * worker thread; the application must eventually call `fn(arg)` exactly once.
++ */
++typedef void (*AuroraDvdCallbackDispatcher)(void (*fn)(void* arg), void* arg);
++void aurora_dvd_set_callback_dispatcher(AuroraDvdCallbackDispatcher dispatcher);
++
+ /**
+  * OVERLAY FILES!
+  *
+diff --git a/include/dolphin/gd/GDBase.h b/include/dolphin/gd/GDBase.h
+index b25732e..3f4c6c3 100644
+--- a/include/dolphin/gd/GDBase.h
++++ b/include/dolphin/gd/GDBase.h
+@@ -40,7 +40,7 @@ inline static void __GDWrite(u8 data) {
+ inline static void GDWrite_data(const void* data, u32 length) {
+     GDOverflowCheck(length);
+     // The compiler realizes this is memcpy, trust.
+-    const u8* dataPtr = static_cast<const u8*>(data);
++    const u8* dataPtr = (const u8*)(data);
+     for (u32 i = 0; i < length; i++) {
+         __GDWrite(dataPtr[i]);
+     }
+diff --git a/include/dolphin/gx/GXAurora.h b/include/dolphin/gx/GXAurora.h
+index 1a312fb..f7081c5 100644
+--- a/include/dolphin/gx/GXAurora.h
++++ b/include/dolphin/gx/GXAurora.h
+@@ -173,6 +173,15 @@ void GXCreateFrameBuffer(u32 width, u32 height);
+  */
+ void GXRestoreFrameBuffer(void);
+ 
++/**
++ * Resolver for main-memory physical addresses written directly into GX
++ * registers (texture image base via BP 0x94-0x97/0xB4-0xB7, TLUT load address
++ * via BP 0x64), e.g. by pre-built display lists. Returns a host pointer, or
++ * NULL if the address is unknown.
++ */
++typedef const void* (*GXAuroraPhysicalResolver)(u32 physicalAddress);
++void GXSetAuroraPhysicalResolver(GXAuroraPhysicalResolver resolver);
++
+ #if __cplusplus
+ }
+ #endif
+diff --git a/lib/dolphin/dvd/dvd.cpp b/lib/dolphin/dvd/dvd.cpp
+index 94481a4..5b353c5 100644
+--- a/lib/dolphin/dvd/dvd.cpp
++++ b/lib/dolphin/dvd/dvd.cpp
+@@ -16,6 +16,7 @@
+ #include <limits>
+ #include <memory>
+ #include <mutex>
++#include <unordered_map>
+ #include <string>
+ #include <thread>
+ #include <utility>
+@@ -317,9 +318,37 @@ bool isCommandBlockIdle(const DVDCommandBlock* block) {
+   return state != DVD_STATE_BUSY && state != DVD_STATE_WAITING;
+ }
+ 
++// Open file handles, keyed by the file's command block. DVDCommandBlock's
++// userData belongs to the application (games store their own pointers
++// there), so it can't hold the handle.
++std::mutex s_fileHandleMutex;
++std::unordered_map<const DVDCommandBlock*, CommandDataBase*> s_fileHandles;
++
++void setFileHandle(const DVDCommandBlock* block, CommandDataBase* handle) {
++  CommandDataBase* old = nullptr;
++  {
++    std::lock_guard lk{s_fileHandleMutex};
++    auto& slot = s_fileHandles[block];
++    old = slot;
++    slot = handle;
++    if (handle == nullptr) {
++      s_fileHandles.erase(block);
++    }
++  }
++  delete old;
++}
++
++CommandDataBase* findFileHandle(const DVDCommandBlock* block) {
++  std::lock_guard lk{s_fileHandleMutex};
++  const auto it = s_fileHandles.find(block);
++  return it != s_fileHandles.end() ? it->second : nullptr;
++}
++
+ CommandDataBase* getCommandHandle(DVDCommandBlock* block) {
+-  if (block != nullptr && block->userData != nullptr) {
+-    return static_cast<CommandDataBase*>(block->userData);
++  if (block != nullptr) {
++    if (auto* handle = findFileHandle(block)) {
++      return handle;
++    }
+   }
+   return s_disc;
+ }
+@@ -341,6 +370,46 @@ void finishCommand(DVDCommandBlock* block, s32 result, u32 transferred) {
+   setCommandResult(block, stateForResult(result), transferred);
+ }
+ 
++
++// Completion callbacks can be handed to the application (e.g. to run them in
++// its emulated interrupt context) instead of being called on the worker thread.
++AuroraDvdCallbackDispatcher s_callbackDispatcher = nullptr;
++
++struct PendingDvdCallback {
++  DVDCBCallback callback;
++  s32 result;
++  DVDCommandBlock* block;
++};
++
++void run_pending_dvd_callback(void* arg) {
++  auto* pending = static_cast<PendingDvdCallback*>(arg);
++  pending->callback(pending->result, pending->block);
++  delete pending;
++}
++
++void cbForReadAsync(s32 result, DVDCommandBlock* block);
++void cbForSeekAsync(s32 result, DVDCommandBlock* block);
++void cbForPrepareStreamAsync(s32 result, DVDCommandBlock* block);
++
++void invoke_dvd_callback(DVDCBCallback callback, s32 result, DVDCommandBlock* block) {
++  if (callback == nullptr) {
++    return;
++  }
++  // The file-level wrappers resolve and dispatch the user's DVDCallback
++  // themselves, while the DVDFileInfo is still guaranteed to be alive (a
++  // synchronous read may free it as soon as the command completes).
++  if (callback == cbForReadAsync || callback == cbForSeekAsync || callback == cbForPrepareStreamAsync) {
++    callback(result, block);
++    return;
++  }
++  if (s_callbackDispatcher != nullptr) {
++    s_callbackDispatcher(run_pending_dvd_callback, new PendingDvdCallback{callback, result, block});
++  } else {
++    callback(result, block);
++  }
++}
++
++
+ class DvdWorker {
+ public:
+   ~DvdWorker() { stop(); }
+@@ -540,9 +609,7 @@ private:
+       transferred = 0;
+     }
+     finishCommand(block, result, transferred);
+-    if (block->callback != nullptr) {
+-      block->callback(result, block);
+-    }
++    invoke_dvd_callback(block->callback, result, block);
+   }
+ 
+   void execute(DVDCommandBlock* block) {
+@@ -576,9 +643,7 @@ private:
+       return;
+     }
+     finishCommand(block, DVD_RESULT_CANCELED, 0);
+-    if (block->callback != nullptr) {
+-      block->callback(DVD_RESULT_CANCELED, block);
+-    }
++    invoke_dvd_callback(block->callback, DVD_RESULT_CANCELED, block);
+   }
+ 
+   static void complete_canceled_commands(const std::vector<DVDCommandBlock*>& blocks) {
+@@ -613,40 +678,60 @@ DvdWorker s_worker;
+ int completeImmediateCommand(DVDCommandBlock* block, u32 command, s32 result, u32 transferred, DVDCBCallback callback) {
+   beginCommand(block, command, nullptr, 0, 0, callback);
+   finishCommand(block, result, transferred);
+-  if (callback != nullptr) {
+-    callback(result, block);
+-  }
++  invoke_dvd_callback(callback, result, block);
+   return TRUE;
+ }
+ 
++struct PendingFileCallback {
++  DVDCallback callback;
++  s32 result;
++  DVDFileInfo* fileInfo;
++};
++
++void run_pending_file_callback(void* arg) {
++  auto* pending = static_cast<PendingFileCallback*>(arg);
++  pending->callback(pending->result, pending->fileInfo);
++  delete pending;
++}
++
++void invoke_file_callback(DVDFileInfo* fileInfo, s32 result) {
++  const DVDCallback callback = fileInfo->callback;
++  if (callback == nullptr) {
++    return;
++  }
++  if (s_callbackDispatcher != nullptr) {
++    s_callbackDispatcher(run_pending_file_callback, new PendingFileCallback{callback, result, fileInfo});
++  } else {
++    callback(result, fileInfo);
++  }
++}
++
+ void cbForReadAsync(s32 result, DVDCommandBlock* block) {
+   auto* fileInfo = reinterpret_cast<DVDFileInfo*>(reinterpret_cast<char*>(block) - offsetof(DVDFileInfo, cb));
+   ASSERTLINE(0x2ED, &fileInfo->cb == block);
+-  if (fileInfo->callback != nullptr) {
+-    fileInfo->callback(result, fileInfo);
+-  }
++  invoke_file_callback(fileInfo, result);
+ }
+ 
+ void cbForSeekAsync(s32 result, DVDCommandBlock* block) {
+   auto* fileInfo = reinterpret_cast<DVDFileInfo*>(reinterpret_cast<char*>(block) - offsetof(DVDFileInfo, cb));
+   ASSERTLINE(0x383, &fileInfo->cb == block);
+-  if (fileInfo->callback != nullptr) {
+-    fileInfo->callback(result, fileInfo);
+-  }
++  invoke_file_callback(fileInfo, result);
+ }
+ 
+ void cbForPrepareStreamAsync(s32 result, DVDCommandBlock* block) {
+   auto* fileInfo = reinterpret_cast<DVDFileInfo*>(reinterpret_cast<char*>(block) - offsetof(DVDFileInfo, cb));
+   ASSERTLINE(0x497, &fileInfo->cb == block);
+-  if (fileInfo->callback != nullptr) {
+-    fileInfo->callback(result, fileInfo);
+-  }
++  invoke_file_callback(fileInfo, result);
+ }
+ 
+ } // namespace
+ 
+ extern "C" {
+ 
++void aurora_dvd_set_callback_dispatcher(AuroraDvdCallbackDispatcher dispatcher) {
++  s_callbackDispatcher = dispatcher;
++}
++
+ bool aurora_dvd_open(const char* disc_path) {
+   if (disc_path == nullptr) {
+     return false;
+@@ -1084,7 +1169,7 @@ BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo) {
+       return FALSE;
+     }
+ 
+-    fileInfo->cb.userData = new CommandDataOverlay(handle);
++    setFileHandle(&fileInfo->cb, new CommandDataOverlay(handle));
+   } else {
+     NodHandle* handle = nullptr;
+     NodResult result = nod_partition_open_file(s_partition, entry.origEntryNum, &handle);
+@@ -1092,7 +1177,7 @@ BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo) {
+       return FALSE;
+     }
+ 
+-    fileInfo->cb.userData = new CommandDataNod(handle);
++    setFileHandle(&fileInfo->cb, new CommandDataNod(handle));
+   }
+ 
+   atomic_store_release(fileInfo->cb.state, DVD_STATE_END);
+@@ -1112,10 +1197,7 @@ BOOL DVDClose(DVDFileInfo* fileInfo) {
+     return FALSE;
+   }
+   s_worker.drain_command(&fileInfo->cb);
+-  if (fileInfo->cb.userData != nullptr) {
+-    delete static_cast<CommandDataBase*>(fileInfo->cb.userData);
+-    fileInfo->cb.userData = nullptr;
+-  }
++  setFileHandle(&fileInfo->cb, nullptr);
+   atomic_store_release(fileInfo->cb.state, DVD_STATE_END);
+   return TRUE;
+ }
+@@ -1294,7 +1376,7 @@ void* DVDGetFSTLocation(void) {
+ 
+ BOOL DVDPrepareStreamAsync(DVDFileInfo* fileInfo, u32 length, u32 offset, DVDCallback callback) {
+   ASSERTMSGLINE(0x46C, fileInfo, "DVDPrepareStreamAsync(): NULL file info was specified");
+-  if (fileInfo == nullptr || fileInfo->cb.userData == nullptr) {
++  if (fileInfo == nullptr || findFileHandle(&fileInfo->cb) == nullptr) {
+     return FALSE;
+   }
+   if (length == 0) {
+diff --git a/lib/dolphin/gx/GXAurora.cpp b/lib/dolphin/gx/GXAurora.cpp
+index 85a4285..ad7f2f6 100644
+--- a/lib/dolphin/gx/GXAurora.cpp
++++ b/lib/dolphin/gx/GXAurora.cpp
+@@ -97,3 +97,11 @@ void GXRestoreFrameBuffer() {
+   GX_WRITE_AURORA(GX_AURORA_END_OFFSCREEN);
+   aurora::gx::fifo::publish();
+ }
++
++namespace aurora::gx {
++extern GXAuroraPhysicalResolver g_physicalResolver;
++}
++
++extern "C" void GXSetAuroraPhysicalResolver(GXAuroraPhysicalResolver resolver) {
++  aurora::gx::g_physicalResolver = resolver;
++}
+diff --git a/lib/dolphin/gx/GXGet.cpp b/lib/dolphin/gx/GXGet.cpp
+index af9d290..16c2b76 100644
+--- a/lib/dolphin/gx/GXGet.cpp
++++ b/lib/dolphin/gx/GXGet.cpp
+@@ -324,16 +324,49 @@ GXTexWrapMode GXGetTexObjWrapT(const GXTexObj* tex_obj) {
+ 
+ GXBool GXGetTexObjMipMap(const GXTexObj* tex_obj) { return reinterpret_cast<const GXTexObj_*>(tex_obj)->has_mips(); }
+ 
+-// TODO GXGetTexObjAll
+-// TODO GXGetTexObjMinFilt
+-// TODO GXGetTexObjMagFilt
+-// TODO GXGetTexObjMinLOD
+-// TODO GXGetTexObjMaxLOD
+-// TODO GXGetTexObjLODBias
+-// TODO GXGetTexObjBiasClamp
+-// TODO GXGetTexObjEdgeLOD
+-// TODO GXGetTexObjMaxAniso
+-// TODO GXGetTexObjLODAll
++void GXGetTexObjAll(const GXTexObj* tex_obj, void** image_ptr, u16* width, u16* height, GXTexFmt* format,
++                    GXTexWrapMode* wrap_s, GXTexWrapMode* wrap_t, GXBool* mipmap) {
++  const auto* obj = reinterpret_cast<const GXTexObj_*>(tex_obj);
++  *image_ptr = const_cast<void*>(obj->data);
++  *width = static_cast<u16>(obj->width());
++  *height = static_cast<u16>(obj->height());
++  *format = static_cast<GXTexFmt>(obj->format());
++  *wrap_s = obj->wrap_s();
++  *wrap_t = obj->wrap_t();
++  *mipmap = obj->has_mips();
++}
++
++GXTexFilter GXGetTexObjMinFilt(const GXTexObj* tex_obj) {
++  return reinterpret_cast<const GXTexObj_*>(tex_obj)->min_filter();
++}
++GXTexFilter GXGetTexObjMagFilt(const GXTexObj* tex_obj) {
++  return reinterpret_cast<const GXTexObj_*>(tex_obj)->mag_filter();
++}
++f32 GXGetTexObjMinLOD(const GXTexObj* tex_obj) { return reinterpret_cast<const GXTexObj_*>(tex_obj)->min_lod(); }
++f32 GXGetTexObjMaxLOD(const GXTexObj* tex_obj) { return reinterpret_cast<const GXTexObj_*>(tex_obj)->max_lod(); }
++f32 GXGetTexObjLODBias(const GXTexObj* tex_obj) { return reinterpret_cast<const GXTexObj_*>(tex_obj)->lod_bias(); }
++GXBool GXGetTexObjBiasClamp(const GXTexObj* tex_obj) {
++  return reinterpret_cast<const GXTexObj_*>(tex_obj)->bias_clamp();
++}
++GXBool GXGetTexObjEdgeLOD(const GXTexObj* tex_obj) {
++  return reinterpret_cast<const GXTexObj_*>(tex_obj)->do_edge_lod();
++}
++GXAnisotropy GXGetTexObjMaxAniso(const GXTexObj* tex_obj) {
++  return reinterpret_cast<const GXTexObj_*>(tex_obj)->max_aniso();
++}
++
++void GXGetTexObjLODAll(const GXTexObj* tex_obj, GXTexFilter* min_filt, GXTexFilter* mag_filt, f32* min_lod,
++                       f32* max_lod, f32* lod_bias, GXBool* bias_clamp, GXBool* do_edge_lod, GXAnisotropy* max_aniso) {
++  const auto* obj = reinterpret_cast<const GXTexObj_*>(tex_obj);
++  *min_filt = obj->min_filter();
++  *mag_filt = obj->mag_filter();
++  *min_lod = obj->min_lod();
++  *max_lod = obj->max_lod();
++  *lod_bias = obj->lod_bias();
++  *bias_clamp = obj->bias_clamp();
++  *do_edge_lod = obj->do_edge_lod();
++  *max_aniso = obj->max_aniso();
++}
+ u32 GXGetTexObjTlut(const GXTexObj* tex_obj) { return reinterpret_cast<const GXTexObj_*>(tex_obj)->tlut; }
+ // TODO GXGetTlutObjData
+ // TODO GXGetTlutObjFmt
+diff --git a/lib/dolphin/mtx/mtx.c b/lib/dolphin/mtx/mtx.c
+index ba2796d..f07f713 100644
+--- a/lib/dolphin/mtx/mtx.c
++++ b/lib/dolphin/mtx/mtx.c
+@@ -402,7 +402,9 @@ void C_MTXScaleApply(const Mtx src, Mtx dst, f32 xS, f32 yS, f32 zS) {
+   dst[2][3] = (src[2][3] * zS);
+ }
+ 
+-void C_MTXRotRad(Mtx m, char axis, f32 rad) {
++// Weak so that games which ship their own version (e.g. Super Mario Galaxy's
++// Overwrite.cpp) can replace it.
++__attribute__((weak)) void C_MTXRotRad(Mtx m, char axis, f32 rad) {
+   f32 sinA;
+   f32 cosA;
+ 
+diff --git a/lib/gfx/texture_convert.cpp b/lib/gfx/texture_convert.cpp
+index b2f791b..f9fded4 100644
+--- a/lib/gfx/texture_convert.cpp
++++ b/lib/gfx/texture_convert.cpp
+@@ -603,12 +603,14 @@ ConvertedTexture convert_texture(u32 format, uint32_t width, uint32_t height, ui
+     converted = DecodeTiled<TextureDecoderI4>(width, height, mips, data);
+     break;
+   case GX_TF_I8:
++  case GX_TF_Z8: // depth textures: sampled as their color-format twins
+     converted = DecodeTiled<TextureDecoderI8>(width, height, mips, data);
+     break;
+   case GX_TF_IA4:
+     converted = DecodeTiled<TextureDecoderIA4>(width, height, mips, data);
+     break;
+   case GX_TF_IA8:
++  case GX_TF_Z16:
+     converted = DecodeTiled<TextureDecoderIA8>(width, height, mips, data);
+     break;
+   case GX_TF_C4:
+@@ -627,6 +629,7 @@ ConvertedTexture convert_texture(u32 format, uint32_t width, uint32_t height, ui
+     converted = DecodeTiled<TextureDecoderRGB5A3>(width, height, mips, data);
+     break;
+   case GX_TF_RGBA8:
++  case GX_TF_Z24X8:
+     converted = BuildRGBA8FromGCN(width, height, mips, data);
+     break;
+   case GX_TF_CMPR:
+diff --git a/lib/gx/command_processor.cpp b/lib/gx/command_processor.cpp
+index 9c6ffa1..7b15e33 100644
+--- a/lib/gx/command_processor.cpp
++++ b/lib/gx/command_processor.cpp
+@@ -14,6 +14,7 @@
+ #include <tracy/Tracy.hpp>
+ 
+ #include <algorithm>
++#include <array>
+ #include <cmath>
+ #include <cstdint>
+ #include <span>
+@@ -263,7 +264,7 @@ ProcessResult process(const u8* data, u32 size) noexcept {
+       const u32 srcOffset = static_cast<u32>(srcArrayIdx) * array.stride;
+       const u32 srcSize = static_cast<u32>(len) * sizeof(u32);
+       AURORA_ASSERT(array.data != nullptr, "indexed XF load from unmapped array {}", arrayType);
+-      AURORA_ASSERT(srcOffset <= array.size && srcSize <= array.size - srcOffset,
++      AURORA_ASSERT(array.size == 0 || (srcOffset <= array.size && srcSize <= array.size - srcOffset),
+                     "indexed XF load outside array {}: offset={}, size={}, array size={}", arrayType, srcOffset,
+                     srcSize, array.size);
+       auto const* srcData = static_cast<const u8*>(array.data) + srcOffset;
+@@ -379,6 +380,56 @@ static u32 calc_vtx_size(GXVtxFmt fmt) noexcept {
+   return vtxSize;
+ }
+ 
++// Arrays set with size 0 have an unknown extent (e.g. the Wii-style 3-argument
++// GXSetArray). For those, the bytes needed are derived from the highest index
++// each draw references; sNeededSize holds the result for the current draw.
++static std::array<u32, GX_VA_MAX_ATTR> sNeededSize{};
++
++static bool scan_unknown_array_sizes(GXVtxFmt fmt, std::span<const u8> data, u16 vtxCount, u32 vtxSize) noexcept {
++  const auto& vtxFmt = g_gxState.vtxFmts[fmt];
++  bool needsUpload = false;
++  u32 offset = 0;
++  for (int i = GX_VA_PNMTXIDX; i <= GX_VA_TEX7; ++i) {
++    const auto& attrFmt = vtxFmt.attrs[i];
++    const auto desc = g_gxState.vtxDesc[i];
++    if (desc == GX_NONE) {
++      continue;
++    }
++    if (desc == GX_DIRECT) {
++      const auto attr = static_cast<GXAttr>(i);
++      offset += comp_type_size(attr, attrFmt.type) * comp_cnt_count(attr, attrFmt.cnt);
++      continue;
++    }
++    const bool idx16 = desc == GX_INDEX16;
++    const u32 numIdx = i == GX_VA_NRM && attrFmt.cnt == GX_NRM_NBT3 ? 3 : 1;
++    const u32 idxBytes = (idx16 ? 2 : 1) * numIdx;
++    if (i >= GX_VA_POS) {
++      auto& array = g_gxState.arrays[i];
++      sNeededSize[i] = 0;
++      if (array.size == 0 && array.data != nullptr) {
++        u32 maxIdx = 0;
++        for (u32 v = 0; v < vtxCount; ++v) {
++          const u8* p = data.data() + v * vtxSize + offset;
++          for (u32 k = 0; k < numIdx; ++k) {
++            // Vertex data in the FIFO is big-endian.
++            const u32 idx = idx16 ? (u32(p[k * 2]) << 8 | p[k * 2 + 1]) : p[k];
++            if (idx > maxIdx && (idx16 ? idx != 0xFFFF : idx != 0xFF)) {
++              maxIdx = idx;
++            }
++          }
++        }
++        const u32 needed = (maxIdx + 1) * array.stride;
++        sNeededSize[i] = needed;
++        if (array.cachedRange.size == 0 || needed > array.uploadedSize) {
++          needsUpload = true;
++        }
++      }
++    }
++    offset += idxBytes;
++  }
++  return needsUpload;
++}
++
+ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Range vertRange, gfx::Range idxRange,
+                          u32 numIndices) noexcept {
+   auto& state = g_gxState;
+@@ -390,7 +441,13 @@ static void push_gx_draw(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, gfx::Rang
+       continue;
+     }
+     auto& array = state.arrays[i];
+-    if (array.cachedRange.size == 0) {
++    if (array.size == 0) {
++      const u32 needed = sNeededSize[i];
++      if (array.cachedRange.size == 0 || needed > array.uploadedSize) {
++        array.cachedRange = gfx::push_storage(static_cast<const uint8_t*>(array.data), needed);
++        array.uploadedSize = needed;
++      }
++    } else if (array.cachedRange.size == 0) {
+       array.cachedRange = gfx::push_storage(static_cast<const uint8_t*>(array.data), array.size);
+     }
+     immediates.arrayStart[i - GX_VA_POS] = array.cachedRange.offset;
+@@ -503,10 +560,13 @@ static void draw_prim(GXPrimitive prim, GXVtxFmt fmt, u16 vtxCount, ByteReader&
+   const bool cleanState = g_gxState.dirty == 0 && fmt == sDrawCache.lastDrawFmt && sDrawCache.lineMode == 0 &&
+                           prim != GX_LINES && prim != GX_LINESTRIP && prim != GX_POINTS;
+   auto* lastDraw = cleanState ? gfx::get_last_draw_command<DrawData>() : nullptr;
+-  const bool canMerge = lastDraw != nullptr && lastDraw->instanceCount == 1;
++  const auto vertexData = reader.take(totalVtxBytes);
++  // A draw that needs more of an unknown-size array than was uploaded can't be
++  // merged into the previous draw (which bound the smaller upload).
++  const bool needsArrayUpload = scan_unknown_array_sizes(fmt, vertexData, vtxCount, vtxSize);
++  const bool canMerge = lastDraw != nullptr && lastDraw->instanceCount == 1 && !needsArrayUpload;
+ 
+   // Push raw vertex data to buffer. Merged draws must remain contiguous with the previous range.
+-  const auto vertexData = reader.take(totalVtxBytes);
+   gfx::Range vertRange = gfx::push_verts(vertexData.data(), vertexData.size(), canMerge ? 0 : 4);
+ 
+   // Try to merge with previous draw call
+diff --git a/lib/gx/gx.hpp b/lib/gx/gx.hpp
+index 9e85609..678fce4 100644
+--- a/lib/gx/gx.hpp
++++ b/lib/gx/gx.hpp
+@@ -300,6 +300,9 @@ struct AttrArray {
+   u8 stride;
+   bool le = true;
+   gfx::Range cachedRange;
++  // For arrays registered with size 0 (unknown extent): bytes uploaded into
++  // cachedRange, grown on demand from the highest index a draw references.
++  u32 uploadedSize = 0;
+ };
+ inline bool operator==(const AttrArray& lhs, const AttrArray& rhs) {
+   return lhs.data == rhs.data && lhs.size == rhs.size && lhs.stride == rhs.stride && lhs.le == rhs.le;
+diff --git a/lib/gx/regs.cpp b/lib/gx/regs.cpp
+index dcec16d..7f5eb9a 100644
+--- a/lib/gx/regs.cpp
++++ b/lib/gx/regs.cpp
+@@ -6,6 +6,10 @@
+ #include <bit>
+ #include <cmath>
+ 
++namespace aurora::gx {
++GXAuroraPhysicalResolver g_physicalResolver = nullptr;
++} // namespace aurora::gx
++
+ namespace aurora::gx::fifo {
+ namespace {
+ constexpr Module Log{"aurora::gx::fifo"};
+@@ -285,6 +289,10 @@ void bp_tlut_load(u8, u32 value) noexcept {
+     auto& slot = g_gxState.loadedTluts[idx];
+     slot.loadTlut0 = g_gxState.bpRegCache[0x64];
+     slot.numEntries = static_cast<u16>(reg_get(value, 10, 10) + 1);
++    if (g_physicalResolver != nullptr) {
++      slot.data = g_physicalResolver((slot.loadTlut0 & 0x001FFFFF) << 5);
++      slot.tlutObjId = 0;
++    }
+   }
+ }
+ 
+@@ -493,6 +501,11 @@ void bp_tex(u8 reg, u32 value) noexcept {
+     break;
+   case 5: // Image3
+     slot.image3 = value;
++    if (g_physicalResolver != nullptr) {
++      // Texture data referenced by physical address (e.g. from a display list).
++      slot.data = g_physicalResolver((value & 0x00FFFFFF) << 5);
++      slot.texObjId = 0;
++    }
+     break;
+   default:
+     break;
+diff --git a/lib/gx/shader.cpp b/lib/gx/shader.cpp
+index 9dfbdac..58eb57c 100644
+--- a/lib/gx/shader.cpp
++++ b/lib/gx/shader.cpp
+@@ -568,6 +568,10 @@ std::string vtx_attr(const ShaderConfig& config, GXAttr attr) {
+     if (attr == GX_VA_CLR0 || attr == GX_VA_CLR1) {
+       return "vec4f(0.0, 0.0, 0.0, 0.0)"s;
+     }
++    if (attr >= GX_VA_TEX0 && attr <= GX_VA_TEX7) {
++      // Texture coordinates the vertex doesn't provide read as zero.
++      return "vec2f(0.0, 0.0)"s;
++    }
+     UNLIKELY FATAL("unmapped vtx attr {}", underlying(attr));
+   }
+   if (attr == GX_VA_POS) {
+@@ -1248,8 +1252,12 @@ std::string build_shader_source(const ShaderConfig& config, DstAlphaMode dstAlph
+       vtxXfrAttrs += fmt::format("\n    var tc{} = vec4f({}, 1.0);", i, nbt_slice_local(NbtSlice::B));
+     } else if (tcg.src == GX_TG_TANGENT) {
+       vtxXfrAttrs += fmt::format("\n    var tc{} = vec4f({}, 1.0);", i, nbt_slice_local(NbtSlice::T));
+-    } else
+-      UNLIKELY FATAL("unhandled tcg src {}", underlying(tcg.src));
++    } else {
++      // Never-configured texgen (e.g. more texgens enabled than set up):
++      // the hardware would reuse stale state; use a zero coordinate.
++      Log.warn("unhandled tcg src {} for texcoord {}", underlying(tcg.src), i);
++      vtxXfrAttrs += fmt::format("\n    var tc{} = vec4f(0.0, 0.0, 1.0, 1.0);", i);
++    }
+     if (tcg.type == GX_TG_MTX2x4 || tcg.type == GX_TG_MTX3x4) {
+       if (info.indexAttr.test(GX_VA_TEX0MTXIDX + i)) {
+         vtxXfrAttrs += fmt::format("\n    var tc{0}_tmp = tc{0} * ubuf.postex_mtx[in_texmtxidx{0} / 3u];", i);
+diff --git a/lib/gx/texture.cpp b/lib/gx/texture.cpp
+index a56709a..30a231e 100644
+--- a/lib/gx/texture.cpp
++++ b/lib/gx/texture.cpp
+@@ -545,15 +545,18 @@ size_t texture_source_size(u32 format, u32 width, u32 height, u32 mipCount) noex
+     case GX_TF_I8:
+     case GX_TF_IA4:
+     case GX_TF_C8:
++    case GX_TF_Z8:
+       total += div_ceil(static_cast<u32>(mipWidth), 8) * div_ceil(static_cast<u32>(mipHeight), 4) * 32;
+       break;
+     case GX_TF_IA8:
+     case GX_TF_RGB565:
+     case GX_TF_RGB5A3:
+     case GX_TF_C14X2:
++    case GX_TF_Z16:
+       total += div_ceil(static_cast<u32>(mipWidth), 4) * div_ceil(static_cast<u32>(mipHeight), 4) * 32;
+       break;
+     case GX_TF_RGBA8:
++    case GX_TF_Z24X8:
+       total += div_ceil(static_cast<u32>(mipWidth), 4) * div_ceil(static_cast<u32>(mipHeight), 4) * 64;
+       break;
+     default:

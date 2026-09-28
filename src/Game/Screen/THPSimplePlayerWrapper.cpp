@@ -1,5 +1,13 @@
 #include "Game/Screen/THPSimplePlayerWrapper.hpp"
 #include "Game/LiveActor/Nerve.hpp"
+
+// Bytes per stereo s16 output sample (written as sizeof(s16*) in the
+// original, which is only right with 32-bit pointers).
+#ifdef TARGET_PC
+#define JAS_STEREO_SAMPLE_BYTES (2 * sizeof(s16))
+#else
+#define JAS_STEREO_SAMPLE_BYTES sizeof(s16*)
+#endif
 #include "Game/Util/MemoryUtil.hpp"
 #include "Game/Util/NerveUtil.hpp"
 #include <JSystem/JAudio2/JASAiCtrl.hpp>
@@ -73,6 +81,18 @@ THPSimplePlayerWrapper::THPSimplePlayerWrapper(const char* pName) : NerveExecuto
     MR::zeroMemory(mSoundBuffer[1], 0x8C0);
     DCFlushRange(mSoundBuffer[0], 0x8C0);
     DCFlushRange(mSoundBuffer[1], 0x8C0);
+#ifdef TARGET_PC
+    // The Wii sizes of these structs (they hold pointers).
+    MR::zeroMemory(&mFileInfo, sizeof(mFileInfo));
+    MR::zeroMemory(&mHeader, sizeof(mHeader));
+    MR::zeroMemory(&mFrameComp, sizeof(mFrameComp));
+    MR::zeroMemory(&mVideoInfo, sizeof(mVideoInfo));
+    MR::zeroMemory(&mAudioInfo, sizeof(mAudioInfo));
+    MR::zeroMemory(mReadBuffer, sizeof(mReadBuffer));
+    MR::zeroMemory(&mTextureSet[0], sizeof(mTextureSet[0]));
+    MR::zeroMemory(&mTextureSet[1], sizeof(mTextureSet[1]));
+    MR::zeroMemory(mAudioBuffer, sizeof(mAudioBuffer));
+#else
     MR::zeroMemory(&mFileInfo, 0x3C);
     MR::zeroMemory(&mHeader, 0x30);
     MR::zeroMemory(&mFrameComp, 0x14);
@@ -82,6 +102,7 @@ THPSimplePlayerWrapper::THPSimplePlayerWrapper(const char* pName) : NerveExecuto
     MR::zeroMemory(&mTextureSet[0], 0x10);
     MR::zeroMemory(&mTextureSet[1], 0x10);
     MR::zeroMemory(mAudioBuffer, 0xF0);
+#endif
     initNerve(GET_NERVE(THPSimplePlayerWrapper, HostTypeWait));
 }
 
@@ -271,7 +292,11 @@ bool THPSimplePlayerWrapper::loadStop() {
 s32 THPSimplePlayerWrapper::decode(s32 audio) {
     bool isValid = mReadBuffer[mNextDecodeIndex].isValid == true;
     if (isValid) {
+#ifdef TARGET_PC
+        BE(u32)* compSize = (BE(u32)*)mReadBuffer[mNextDecodeIndex].ptr + 2;  // big-endian frame header
+#else
         u32* compSize = (u32*)mReadBuffer[mNextDecodeIndex].ptr + 2;
+#endif
         u8* ptr = mReadBuffer[mNextDecodeIndex].ptr + mFrameComp.numComponents * 4 + 8;
 
         if (mAudioExist) {
@@ -427,7 +452,11 @@ void THPSimplePlayerWrapper::dvdCallBack(s32 result) {
     mTotalReadFrame++;
     mReadBuffer[mReadIndex].isValid = 1;
     mCurOffset += mReadSize;
+#ifdef TARGET_PC
+    mReadSize = PortReadBE32(mReadBuffer[mReadIndex].ptr);
+#else
     mReadSize = *(u32*)mReadBuffer[mReadIndex].ptr;
+#endif
     int index = mReadIndex;
     index = getNextBuffer(index);
     mReadIndex = index;
@@ -615,7 +644,11 @@ void THPSimplePlayerWrapper::exeReadPreLoad() {
 
 void THPSimplePlayerWrapper::endReadPreLoadOne() {
     mCurOffset += mReadSize;
+#ifdef TARGET_PC
+    mReadSize = PortReadBE32(mReadBuffer[mReadIndex].ptr);
+#else
     mReadSize = *(s32*)mReadBuffer[mReadIndex].ptr;
+#endif
     mReadBuffer[mReadIndex].isValid = 1;
     mReadBuffer[mReadIndex].frameNumber = mTotalReadFrame;
     mReadIndex = getNextBuffer(mReadIndex);
@@ -705,11 +738,11 @@ void THPSimplePlayerWrapper::mixAudio(s16* pDest, u32 sample) {
             s32 idx1 = (mAudioOutputIndex + 1) % 0x14;
             s32 idx2 = (mAudioOutputIndex + 2) % 0x14;
             if (!mAudioBuffer[idx1].validSample || !mAudioBuffer[idx2].validSample) {
-                MR::zeroMemory(pDest, sample * sizeof(s16*));
+                MR::zeroMemory(pDest, sample * JAS_STEREO_SAMPLE_BYTES);
                 return;
             }
         } else if (!mAudioBuffer[(mAudioOutputIndex + 1) % 0x14].validSample) {
-            MR::zeroMemory(pDest, sample * sizeof(s16*));
+            MR::zeroMemory(pDest, sample * JAS_STEREO_SAMPLE_BYTES);
             return;
         }
 
@@ -801,13 +834,13 @@ void THPSimplePlayerWrapper::mixAudio(s16* pDest, u32 sample) {
                 if (sample == 0)
                     break;
             } else {
-                MR::zeroMemory(pDest, sample * sizeof(s16*));
+                MR::zeroMemory(pDest, sample * JAS_STEREO_SAMPLE_BYTES);
                 return;
             }
         } while (true);
 
     } else {
-        MR::zeroMemory(pDest, sample * sizeof(s16*));
+        MR::zeroMemory(pDest, sample * JAS_STEREO_SAMPLE_BYTES);
     }
 }
 

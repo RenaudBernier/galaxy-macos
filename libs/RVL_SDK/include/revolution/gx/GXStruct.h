@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXSTRUCT_H
 #define GXSTRUCT_H
 
@@ -74,3 +77,4 @@ typedef struct _GXFogAdjTable {
 #endif
 
 #endif  // GXSTRUCT_H
+#endif  // TARGET_PC && PORT_AURORA

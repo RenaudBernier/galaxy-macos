@@ -4,7 +4,11 @@
 #include "JSystem/JUtility/JUTConsole.hpp"
 #include "JSystem/JUtility/JUTGamePad.hpp"
 
+#ifdef PORT_AURORA
+#include <revolution/gx.h>
+#else
 typedef struct _GXRenderModeObj GXRenderModeObj;
+#endif
 typedef struct OSContext OSContext;
 class JUTDirectPrint;
 

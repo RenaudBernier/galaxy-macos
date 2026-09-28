@@ -3,7 +3,14 @@
 #include <math_types.hpp>
 #include <revolution/types.h>
 
-namespace std {
+#ifdef TARGET_PC
+// Host C++ libraries have their own std::pair; keep JMath's private.
+#define JMATH_PAIR_NS jmath_std
+#else
+#define JMATH_PAIR_NS std
+#endif
+
+namespace JMATH_PAIR_NS {
     template < typename A1, typename B1 >
     struct pair {
         A1 a1;
@@ -45,7 +52,7 @@ namespace JMath {
         TSinCosTable();
 
         static const u32 LEN = 1 << Bits;
-        std::pair< T, T > table[LEN];
+        JMATH_PAIR_NS::pair< T, T > table[LEN];
 
         T sinShort(s16 v) const {
             return table[static_cast< u16 >(v) >> (16U - Bits)].a1;
@@ -166,6 +173,13 @@ namespace JMath {
     extern TSinCosTable< 14, f32 > sSinCosTable;
     extern TAtanTable< 1024, f32 > sAtanTable;
     extern TAsinAcosTable< 1024, f32 > sAsinAcosTable;
+
+#ifdef TARGET_PC
+    // Defined in JMATrigonometric.cpp; clang requires the explicit
+    // specialization to be declared before the inline uses below.
+    template <>
+    f32 TAtanTable< 1024, f32 >::atan2_(f32, f32) const;
+#endif
 
     inline f32 acosDegree(f32 x) {
         return sAsinAcosTable.acosDegree(x);

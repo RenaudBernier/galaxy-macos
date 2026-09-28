@@ -2,6 +2,7 @@
 
 #include "JSystem/J3DGraphBase/J3DMatBlock.hpp"
 #include "JSystem/J3DGraphLoader/J3DModelLoader.hpp"
+#include "JSystem/J3DGraphLoader/J3DMaterialFactory.hpp"
 
 class J3DMaterial;
 struct J3DTexCoord2Info;
@@ -16,26 +17,26 @@ struct J3DMaterialInitData_v21 {
     /* 0x005 */ u8 mZCompLocIdx;
     /* 0x006 */ u8 mZModeIdx;
     /* 0x007 */ u8 mDitherIdx;
-    /* 0x008 */ u16 mMatColorIdx[2];
-    /* 0x00C */ u16 mColorChanIdx[4];
-    /* 0x014 */ u16 mTexCoordIdx[8];
+    /* 0x008 */ BE(u16) mMatColorIdx[2];
+    /* 0x00C */ BE(u16) mColorChanIdx[4];
+    /* 0x014 */ BE(u16) mTexCoordIdx[8];
     /* 0x024 */ u8 field_0x038[0x10];
-    /* 0x034 */ u16 mTexMtxIdx[8];
+    /* 0x034 */ BE(u16) mTexMtxIdx[8];
     /* 0x044 */ u8 field_0x058[0x2c];
-    /* 0x070 */ u16 mTexNoIdx[8];
-    /* 0x080 */ u16 mTevKColorIdx[4];
+    /* 0x070 */ BE(u16) mTexNoIdx[8];
+    /* 0x080 */ BE(u16) mTevKColorIdx[4];
     /* 0x088 */ u8 mTevKColorSel[0x10];
     /* 0x098 */ u8 mTevKAlphaSel[0x10];
-    /* 0x0A8 */ u16 mTevOrderIdx[0x10];
-    /* 0x0C8 */ u16 mTevColorIdx[4];
-    /* 0x0D0 */ u16 mTevStageIdx[0x10];
-    /* 0x0F0 */ u16 mTevSwapModeIdx[0x10];
-    /* 0x110 */ u16 mTevSwapModeTableIdx[4];
+    /* 0x0A8 */ BE(u16) mTevOrderIdx[0x10];
+    /* 0x0C8 */ BE(u16) mTevColorIdx[4];
+    /* 0x0D0 */ BE(u16) mTevStageIdx[0x10];
+    /* 0x0F0 */ BE(u16) mTevSwapModeIdx[0x10];
+    /* 0x110 */ BE(u16) mTevSwapModeTableIdx[4];
     /* 0x118 */ u8 field_0x12c[0x18];
-    /* 0x130 */ u16 mFogIdx;
-    /* 0x132 */ u16 mAlphaCompIdx;
-    /* 0x134 */ u16 mBlendIdx;
-    /* 0x136 */ u16 mNBTScaleIdx;
+    /* 0x130 */ BE(u16) mFogIdx;
+    /* 0x132 */ BE(u16) mAlphaCompIdx;
+    /* 0x134 */ BE(u16) mBlendIdx;
+    /* 0x136 */ BE(u16) mNBTScaleIdx;
 };  // size 0x138
 
 class J3DMaterialFactory_v21 {
@@ -76,7 +77,7 @@ public:
 
     /* 0x00 */ u16 mMaterialNum;
     /* 0x04 */ J3DMaterialInitData_v21* mpMaterialInitData;
-    /* 0x08 */ u16* mpMaterialID;
+    /* 0x08 */ BE(u16)* mpMaterialID;
     /* 0x0C */ GXColor* mpMatColor;
     /* 0x10 */ u8* mpColorChanNum;
     /* 0x14 */ J3DColorChanInfo* mpColorChanInfo;
@@ -85,10 +86,10 @@ public:
     /* 0x20 */ J3DTexCoord2Info* mpTexCoord2Info;
     /* 0x24 */ J3DTexMtxInfo* mpTexMtxInfo;
     /* 0x28 */ J3DTexMtxInfo* field_0x28;
-    /* 0x2C */ u16* mpTexNo;
-    /* 0x30 */ GXCullMode* mpCullMode;
+    /* 0x2C */ BE(u16)* mpTexNo;
+    /* 0x30 */ BE(GXCullMode)* mpCullMode;
     /* 0x34 */ J3DTevOrderInfo* mpTevOrderInfo;
-    /* 0x38 */ GXColorS10* mpTevColor;
+    /* 0x38 */ J3DFileTevColor* mpTevColor;
     /* 0x3C */ GXColor* mpTevKColor;
     /* 0x40 */ u8* mpTevStageNum;
     /* 0x44 */ J3DTevStageInfo* mpTevStageInfo;

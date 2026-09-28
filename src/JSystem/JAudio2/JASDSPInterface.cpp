@@ -115,7 +115,8 @@ void JASDsp::initBuffer() {
     for (u8 i = 0; i < 4; i++) {
         setFXLine(i, NULL, NULL);
     }
-    DsetupTable(0x40, u32(CH_BUF), u32(&DSPRES_FILTER), u32(&DSPADPCM_FILTER), u32(FX_BUF));
+    // PORT: hw
+    DsetupTable(0x40, PTR_TO_U32(CH_BUF), PTR_TO_U32(&DSPRES_FILTER), PTR_TO_U32(&DSPADPCM_FILTER), PTR_TO_U32(FX_BUF));
     flushBuffer();
 }
 

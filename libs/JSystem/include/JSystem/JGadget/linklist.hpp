@@ -13,6 +13,24 @@
 
 #define JGADGET_LINK_LIST(type, node) JGadget::TLinkList< type, -offsetof(type, node) >
 
+#ifdef TARGET_PC
+#include <iterator>
+
+namespace JGadget {
+    namespace port_detail {
+        // Equivalent of MSL's std::iterator base (deprecated in host C++ libraries).
+        template < typename Category, typename T, typename Distance = s32, typename Pointer = T*, typename Reference = T& >
+        struct iterator {
+            typedef Category iterator_category;
+            typedef T value_type;
+            typedef Distance difference_type;
+            typedef Pointer pointer;
+            typedef Reference reference;
+        };
+    }  // namespace port_detail
+}  // namespace JGadget
+#define JGADGET_STD_ITERATOR JGadget::port_detail::iterator
+#else
 namespace std {
 
     struct input_iterator_tag {};
@@ -33,14 +51,16 @@ namespace std {
     };
 
 }  // namespace std
+#define JGADGET_STD_ITERATOR std::iterator
+#endif
 
 namespace JGadget {
 
     template < typename Category, typename T, typename Distance = s32, typename Pointer = T*, typename Reference = T& >
-    class TIterator : std::iterator< Category, T, Distance, Pointer, Reference > {
+    class TIterator : JGADGET_STD_ITERATOR< Category, T, Distance, Pointer, Reference > {
     public:
         const TIterator& operator=(const TIterator& rOther) NO_INLINE {
-            std::iterator< Category, T, Distance, Pointer, Reference >::operator=(rOther);
+            JGADGET_STD_ITERATOR< Category, T, Distance, Pointer, Reference >::operator=(rOther);
             return *this;
         }
     };

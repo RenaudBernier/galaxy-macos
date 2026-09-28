@@ -24,22 +24,48 @@ public:
     f32 x, y, z;
 };
 
+#ifdef TARGET_PC
+// KCL pointer fields are relocated in place. On the host they hold the Wii
+// address in big-endian byte order, so the original "first word is negative
+// once relocated" test (isBinaryInitialized) still works on the big-endian
+// word, and a KCL shared by several KCollisionServers is converted only once.
+template < typename T >
+struct KCLBEPtr {
+    u32 raw;
+
+    T* get() const { return U32_TO_PTR(T*, PortReadBE32(&raw)); }
+    operator T*() const { return get(); }
+    T* operator->() const { return get(); }
+    KCLBEPtr& operator=(T* p) {
+        PortWriteBE32(&raw, PTR_TO_U32(p));
+        return *this;
+    }
+};
+
+#define KCL_PTR(T) KCLBEPtr< T >
+#else
+#define KCL_PTR(T) T*
+#endif
+
+// Collision file. On the host, everything except the octree (read with
+// big-endian accessors) is converted to host byte order once, when the
+// pointers are relocated (KCollisionServer::setData).
 struct KCLFile {
     union {
-        /* 0x00 */ TVec3f* mPos;
-        /* 0x00 */ u32 mPosOffset;
+        /* 0x00 */ KCL_PTR(TVec3f) mPos;
+        /* 0x00 */ BE(u32) mPosOffset;
     };
     union {
-        /* 0x04 */ TVec3f* mNorms;
-        /* 0x04 */ u32 mNormOffset;
+        /* 0x04 */ KCL_PTR(TVec3f) mNorms;
+        /* 0x04 */ BE(u32) mNormOffset;
     };
     union {
-        /* 0x08 */ KC_PrismData* mPrisms;
-        /* 0x08 */ u32 mPrismOffset;
+        /* 0x08 */ KCL_PTR(KC_PrismData) mPrisms;
+        /* 0x08 */ BE(u32) mPrismOffset;
     };
     union {
-        /* 0x0C */ void* mOctree;
-        /* 0x0C */ u32 mOctreeOffset;
+        /* 0x0C */ KCL_PTR(void) mOctree;
+        /* 0x0C */ BE(u32) mOctreeOffset;
     };
     /* 0x10 */ f32 mThickness;
     /* 0x14 */ TVec3f mMin;

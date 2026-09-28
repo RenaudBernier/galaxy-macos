@@ -154,7 +154,7 @@ u32 GameDataHolder::getRaceBestTime(const char* pName) const {
 
 void GameDataHolder::addMissPoint(int points) {
     u32 value = mEventValueChecker->getValue("MissPointForLetter");
-    u32 newValue = MR::clamp(value + points, 0l, 20l);
+    u32 newValue = MR::clamp(value + points, (s32)0, (s32)20);
 
     setGameEventValue("MissPointForLetter", newValue);
 }

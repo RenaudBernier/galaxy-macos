@@ -21,6 +21,11 @@ J3DVertexData::J3DVertexData() {
     mVtxPosType = GX_F32;
     mVtxNrmFrac = 0;
     mVtxNrmType = GX_F32;
+#ifdef TARGET_PC
+    for (int i = 0; i < 13; ++i) {
+        mVtxArrSize[i] = 0;
+    }
+#endif
 }
 
 void J3DVertexBuffer::setVertexData(J3DVertexData* data) {

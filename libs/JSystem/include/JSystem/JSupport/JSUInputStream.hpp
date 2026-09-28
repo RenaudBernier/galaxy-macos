@@ -20,15 +20,22 @@ public:
         return ret;
     }
 
+    // Streams read big-endian file data.
     inline u16 readU16() {
         u16 ret;
         read(&ret, sizeof(u16));
+#ifdef TARGET_PC
+        ret = __builtin_bswap16(ret);
+#endif
         return ret;
     }
 
     inline u32 readU32() {
         u32 ret;
         read(&ret, sizeof(u32));
+#ifdef TARGET_PC
+        ret = __builtin_bswap32(ret);
+#endif
         return ret;
     }
 

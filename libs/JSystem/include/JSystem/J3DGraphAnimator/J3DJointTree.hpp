@@ -6,9 +6,10 @@
 class J3DMtxBuffer;
 class JUTNameTab;
 
+// Read in place from model file data (INF1).
 struct J3DModelHierarchy {
-    /* 0x0 */ u16 mType;
-    /* 0x2 */ u16 mValue;
+    /* 0x0 */ BE(u16) mType;
+    /* 0x2 */ BE(u16) mValue;
 };
 
 class J3DJoint;

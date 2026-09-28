@@ -6,14 +6,14 @@
 J3DMaterialFactory::J3DMaterialFactory(J3DMaterialBlock const& i_block) {
     mMaterialNum = i_block.mMaterialNum;
     mpMaterialInitData = JSUConvertOffsetToPtr< J3DMaterialInitData >(&i_block, i_block.mpMaterialInitData);
-    mpMaterialID = JSUConvertOffsetToPtr< u16 >(&i_block, i_block.mpMaterialID);
-    if (i_block.mpIndInitData != nullptr && (uintptr_t)i_block.mpIndInitData - (uintptr_t)i_block.mpNameTable > 4) {
+    mpMaterialID = JSUConvertOffsetToPtr< BE(u16) >(&i_block, i_block.mpMaterialID);
+    if ((uintptr_t)i_block.mpIndInitData != 0 && (uintptr_t)i_block.mpIndInitData - (uintptr_t)i_block.mpNameTable > 4) {
         mpIndInitData = JSUConvertOffsetToPtr< J3DIndInitData >(&i_block, i_block.mpIndInitData);
     } else {
         mpIndInitData = nullptr;
     }
 
-    mpCullMode = JSUConvertOffsetToPtr< GXCullMode >(&i_block, i_block.mpCullMode);
+    mpCullMode = JSUConvertOffsetToPtr< BE(GXCullMode) >(&i_block, i_block.mpCullMode);
     mpMatColor = JSUConvertOffsetToPtr< GXColor >(&i_block, i_block.mpMatColor);
     mpColorChanNum = JSUConvertOffsetToPtr< u8 >(&i_block, i_block.mpColorChanNum);
     mpColorChanInfo = JSUConvertOffsetToPtr< J3DColorChanInfo >(&i_block, i_block.mpColorChanInfo);
@@ -24,9 +24,9 @@ J3DMaterialFactory::J3DMaterialFactory(J3DMaterialBlock const& i_block) {
     mpTexCoord2Info = JSUConvertOffsetToPtr< J3DTexCoord2Info >(&i_block, i_block.mpTexCoord2Info);
     mpTexMtxInfo = JSUConvertOffsetToPtr< J3DTexMtxInfo >(&i_block, i_block.mpTexMtxInfo);
     field_0x34 = JSUConvertOffsetToPtr< J3DTexMtxInfo >(&i_block, i_block.field_0x44);
-    mpTexNo = JSUConvertOffsetToPtr< u16 >(&i_block, i_block.mpTexNo);
+    mpTexNo = JSUConvertOffsetToPtr< BE(u16) >(&i_block, i_block.mpTexNo);
     mpTevOrderInfo = JSUConvertOffsetToPtr< J3DTevOrderInfo >(&i_block, i_block.mpTevOrderInfo);
-    mpTevColor = JSUConvertOffsetToPtr< GXColorS10 >(&i_block, i_block.mpTevColor);
+    mpTevColor = JSUConvertOffsetToPtr< J3DFileTevColor >(&i_block, i_block.mpTevColor);
     mpTevKColor = JSUConvertOffsetToPtr< GXColor >(&i_block, i_block.mpTevKColor);
     mpTevStageNum = JSUConvertOffsetToPtr< u8 >(&i_block, i_block.mpTevStageNum);
     mpTevStageInfo = JSUConvertOffsetToPtr< J3DTevStageInfo >(&i_block, i_block.mpTevStageInfo);
@@ -372,7 +372,14 @@ J3DMaterial* J3DMaterialFactory::createLockedMaterial(J3DMaterial* i_material, i
         i_material->mMaterialMode = mpMaterialMode[i_idx];
     }
 
+#ifdef TARGET_PC
+    J3DCurrentMtxInfo currentMtxInfo;
+    currentMtxInfo.mMtxIdxRegA = PortReadBE32(&mpCurrentMtxInfo[i_idx].mMtxIdxRegA);
+    currentMtxInfo.mMtxIdxRegB = PortReadBE32(&mpCurrentMtxInfo[i_idx].mMtxIdxRegB);
+    i_material->mCurrentMtx = currentMtxInfo;
+#else
     i_material->mCurrentMtx = mpCurrentMtxInfo[i_idx];
+#endif
     i_material->getColorBlock()->setMatColorOffset(mpPatchingInfo[i_idx].mMatColorOffset);
     i_material->getColorBlock()->setColorChanOffset(mpPatchingInfo[i_idx].mColorChanOffset);
     i_material->getTexGenBlock()->setTexMtxOffset(mpPatchingInfo[i_idx].mTexMtxOffset);
@@ -538,7 +545,7 @@ J3DTexMtx* J3DMaterialFactory::newTexMtx(int i_idx, int i_no) const {
     J3DTexMtx* tex_mtx = nullptr;
     J3DMaterialInitData* mtl_init_data = &mpMaterialInitData[mpMaterialID[i_idx]];
     if (mtl_init_data->mTexMtxIdx[i_no] != 0xffff) {
-        tex_mtx = new J3DTexMtx(mpTexMtxInfo[mtl_init_data->mTexMtxIdx[i_no]]);
+        tex_mtx = new J3DTexMtx(J3D_PORT_LOAD(mpTexMtxInfo[mtl_init_data->mTexMtxIdx[i_no]]));
     }
 
     return tex_mtx;
@@ -577,7 +584,7 @@ J3DGXColorS10 J3DMaterialFactory::newTevColor(int i_idx, int i_no) const {
     J3DGXColorS10 dflt = _dflt;
     J3DMaterialInitData* mtl_init_data = &mpMaterialInitData[mpMaterialID[i_idx]];
     if (mtl_init_data->mTevColorIdx[i_no] != 0xffff) {
-        return mpTevColor[mtl_init_data->mTevColorIdx[i_no]];
+        return J3D_PORT_LOAD(mpTevColor[mtl_init_data->mTevColorIdx[i_no]]);
     } else {
         return dflt;
     }
@@ -641,7 +648,7 @@ J3DIndTexOrder J3DMaterialFactory::newIndTexOrder(int i_idx, int i_no) const {
 J3DIndTexMtx J3DMaterialFactory::newIndTexMtx(int i_idx, int i_no) const {
     J3DIndTexMtx dflt;
     if (mpIndInitData[i_idx].mEnabled == true) {
-        return J3DIndTexMtx(mpIndInitData[i_idx].mIndTexMtxInfo[i_no]);
+        return J3DIndTexMtx(J3D_PORT_LOAD(mpIndInitData[i_idx].mIndTexMtxInfo[i_no]));
     } else {
         return dflt;
     }
@@ -669,7 +676,7 @@ J3DFog J3DMaterialFactory::newFog(int i_idx) const {
     J3DFog fog;
     J3DMaterialInitData* mtl_init_data = &mpMaterialInitData[mpMaterialID[i_idx]];
     if (mtl_init_data->mFogIdx != 0xffff) {
-        fog.setFogInfo(mpFogInfo[mtl_init_data->mFogIdx]);
+        fog.setFogInfo(J3D_PORT_LOAD(mpFogInfo[mtl_init_data->mFogIdx]));
     }
 
     return fog;
@@ -725,7 +732,7 @@ J3DNBTScale J3DMaterialFactory::newNBTScale(int i_idx) const {
     J3DNBTScale dflt(j3dDefaultNBTScaleInfo);
     J3DMaterialInitData* mtl_init_data = &mpMaterialInitData[mpMaterialID[i_idx]];
     if (mtl_init_data->mNBTScaleIdx != 0xffff) {
-        return J3DNBTScale(mpNBTScaleInfo[mtl_init_data->mNBTScaleIdx]);
+        return J3DNBTScale(J3D_PORT_LOAD(mpNBTScaleInfo[mtl_init_data->mNBTScaleIdx]));
     } else {
         return dflt;
     }

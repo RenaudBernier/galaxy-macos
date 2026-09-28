@@ -68,7 +68,11 @@ u32 Binder::copyPlaneArrayAndSortingSensor(HitInfo** pPlanes, u32 capacity) {
             pPlanes[count++] = &mRoofInfo;
         }
 
+#ifdef TARGET_PC
+        msl::sort(pPlanes, pPlanes + count, compSensor);
+#else
         std::sort(pPlanes, pPlanes + count, compSensor);
+#endif
         return count;
     }
 
@@ -76,7 +80,11 @@ u32 Binder::copyPlaneArrayAndSortingSensor(HitInfo** pPlanes, u32 capacity) {
         pPlanes[i] = &mPlane[i];
     }
 
+#ifdef TARGET_PC
+    msl::sort(pPlanes, pPlanes + mPlaneNum, compSensor);
+#else
     std::sort(pPlanes, pPlanes + mPlaneNum, compSensor);
+#endif
     return mPlaneNum;
 }
 

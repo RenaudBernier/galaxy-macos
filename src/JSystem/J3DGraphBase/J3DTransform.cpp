@@ -72,6 +72,47 @@ void J3DCalcYBBoardMtx(Mtx mtx) {
     mtx[2][2] = vec.z * z;
 }
 
+#ifdef TARGET_PC
+// Cofactor matrix divided by the determinant (inverse transpose of the upper
+// 3x3). Fused ops mirror the paired-single sequence; the determinant's
+// reciprocal is refined with the same two Newton-Raphson steps as the original.
+void J3DPSCalcInverseTranspose(Mtx src, Mtx33 dst) {
+    const f32 m00 = src[0][0], m01 = src[0][1], m02 = src[0][2];
+    const f32 m10 = src[1][0], m11 = src[1][1], m12 = src[1][2];
+    const f32 m20 = src[2][0], m21 = src[2][1], m22 = src[2][2];
+
+    const f32 c00 = fmaf(m11, m22, -(m21 * m12));
+    const f32 c01 = fmaf(m12, m20, -(m22 * m10));
+    const f32 c02 = fmaf(m10, m21, -(m11 * m20));
+    const f32 c10 = fmaf(m21, m02, -(m01 * m22));
+    const f32 c11 = fmaf(m22, m00, -(m02 * m20));
+    const f32 c12 = fmaf(m01, m20, -(m00 * m21));
+    const f32 c20 = fmaf(m01, m12, -(m11 * m02));
+    const f32 c21 = fmaf(m02, m10, -(m12 * m00));
+    const f32 c22 = fmaf(m00, m11, -(m01 * m10));
+
+    f32 det = m00 * c00;
+    det = fmaf(m10, c10, det);
+    det = fmaf(m20, c20, det);
+    if (det == 0.0f) {
+        return;
+    }
+
+    f32 inv = 1.0f / det;
+    inv = -fmaf(det, inv * inv, -(inv + inv));
+    inv = -fmaf(det, inv * inv, -(inv + inv));
+
+    dst[0][0] = c00 * inv;
+    dst[0][1] = c01 * inv;
+    dst[0][2] = c02 * inv;
+    dst[1][0] = c10 * inv;
+    dst[1][1] = c11 * inv;
+    dst[1][2] = c12 * inv;
+    dst[2][0] = c20 * inv;
+    dst[2][1] = c21 * inv;
+    dst[2][2] = c22 * inv;
+}
+#else
 asm void J3DPSCalcInverseTranspose(__REGISTER Mtx src, __REGISTER Mtx33 dst) {
 #ifdef __MWERKS__  // clang-format off
 	psq_l    f0, 0(src), 1, 0
@@ -128,6 +169,7 @@ lbl_8005F118:
 	blr
 #endif  // clang-format on
 }
+#endif
 
 void J3DGetTranslateRotateMtx(const J3DTransformInfo& tx, Mtx dst) {
     f32 cxsz;
@@ -261,6 +303,15 @@ void J3DGetTextureMtxMayaOld(const J3DTextureSRTInfo& srt, Mtx dst) {
     dst[2][2] = 1.0f;
 }
 
+#ifdef TARGET_PC
+void J3DScaleNrmMtx(Mtx mtx, const Vec& scl) {
+    for (int r = 0; r < 3; r++) {
+        mtx[r][0] *= scl.x;
+        mtx[r][1] *= scl.y;
+        mtx[r][2] *= scl.z;
+    }
+}
+#else
 asm void J3DScaleNrmMtx(__REGISTER Mtx mtx, const __REGISTER Vec& scl) {
 #ifdef __MWERKS__  // clang-format off
 	nofralloc;
@@ -296,7 +347,17 @@ asm void J3DScaleNrmMtx(__REGISTER Mtx mtx, const __REGISTER Vec& scl) {
 	blr
 #endif  // clang-format on
 }
+#endif
 
+#ifdef TARGET_PC
+void J3DScaleNrmMtx33(Mtx33 mtx, const Vec& scale) {
+    for (int r = 0; r < 3; r++) {
+        mtx[r][0] *= scale.x;
+        mtx[r][1] *= scale.y;
+        mtx[r][2] *= scale.z;
+    }
+}
+#else
 asm void J3DScaleNrmMtx33(__REGISTER Mtx33 mtx, const __REGISTER Vec& scale) {
 #ifdef __MWERKS__  // clang-format off
 	psq_l    f0, 0(mtx), 0, 0
@@ -322,7 +383,28 @@ asm void J3DScaleNrmMtx33(__REGISTER Mtx33 mtx, const __REGISTER Vec& scale) {
 	blr
 #endif  // clang-format on
 }
+#endif
 
+#ifdef TARGET_PC
+// dst (3x4) = mtx1 (3x4, implicit 4th row unused) * mtx2 (a 4x4 projection).
+void J3DMtxProjConcat(Mtx mtx1, Mtx mtx2, Mtx dst) {
+    f32 out[3][4];
+    for (int r = 0; r < 3; r++) {
+        for (int c = 0; c < 4; c++) {
+            f32 t = mtx1[r][0] * mtx2[0][c];
+            t = fmaf(mtx1[r][1], mtx2[1][c], t);
+            t = fmaf(mtx1[r][2], mtx2[2][c], t);
+            t = fmaf(mtx1[r][3], mtx2[3][c], t);
+            out[r][c] = t;
+        }
+    }
+    for (int r = 0; r < 3; r++) {
+        for (int c = 0; c < 4; c++) {
+            dst[r][c] = out[r][c];
+        }
+    }
+}
+#else
 asm void J3DMtxProjConcat(__REGISTER Mtx mtx1, __REGISTER Mtx mtx2, __REGISTER Mtx dst) {
 #ifdef __MWERKS__  // clang-format off
 	psq_l    f2, 0(mtx1), 0, 0
@@ -400,8 +482,36 @@ asm void J3DMtxProjConcat(__REGISTER Mtx mtx1, __REGISTER Mtx mtx2, __REGISTER M
 	blr
 #endif  // clang-format on
 }
+#endif
 
 static f32 Unit01[2] = {0.0f, 1.0f};
+
+#ifdef TARGET_PC
+// mAB[i] = mA * mB[i] for count consecutive matrices (mA is not advanced).
+void J3DPSMtxArrayConcat(Mtx mA, Mtx mB, Mtx mAB, u32 count) {
+    for (u32 i = 0; i < count; i++) {
+        f32 (*b)[4] = mB + i * 3;
+        f32 (*ab)[4] = mAB + i * 3;
+        f32 out[3][4];
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 4; c++) {
+                f32 t = b[0][c] * mA[r][0];
+                t = fmaf(b[1][c], mA[r][1], t);
+                t = fmaf(b[2][c], mA[r][2], t);
+                if (c >= 2) {
+                    t = fmaf(Unit01[c - 2], mA[r][3], t);
+                }
+                out[r][c] = t;
+            }
+        }
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 4; c++) {
+                ab[r][c] = out[r][c];
+            }
+        }
+    }
+}
+#endif
 
 #ifdef __MWERKS__  // clang-format off
 asm void J3DPSMtxArrayConcat(register Mtx mA, register Mtx mB, register Mtx mAB, register u32 count) {

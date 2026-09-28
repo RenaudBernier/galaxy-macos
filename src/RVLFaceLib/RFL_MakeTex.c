@@ -1,5 +1,5 @@
 #include "RVLFaceLibInternal.h"
-#include <cmath>
+#include <math.h>
 #include <revolution/gx/GXVert.h>
 
 void RFLiSetupCopyTex(GXTexFmt fmt, u16 width, u16 height, void* buffer, GXColor clearColor) {

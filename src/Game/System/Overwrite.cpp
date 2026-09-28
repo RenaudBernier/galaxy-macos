@@ -166,7 +166,7 @@ s32 JKRExpHeap::adjustSize() {
 }
 
 u32 JKRHeap::getMaxAllocatableSize(int alignment) {
-    u32 address = reinterpret_cast< u32 >(getMaxFreeBlock());
+    u32 address = PTR_TO_U32(getMaxFreeBlock());
     return ~(alignment - 1) & (getFreeSize() - ((alignment - 1) & (alignment - (address & 0xF))));
 }
 
@@ -471,7 +471,12 @@ void JPABaseEmitter::init(JPAEmitterManager* pManager, JPAResource* pResource) {
         MR::normalize(&mLocalDir);
     }
 
+#ifdef TARGET_PC
+    // Big-endian vector in the JPA dynamics block (see JPADynamicsBlock.hpp).
+    const JPA_DATA_VEC3S& rRotation = mpRes->getDyn()->mpData->mEmitterRot;
+#else
     const JGeometry::TVec3< s16 >& rRotation = mpRes->getDyn()->mpData->mEmitterRot;
+#endif
     const s16 x = rRotation.x;
     const s16 z = rRotation.z;
     const s16 y = rRotation.y;
@@ -1055,22 +1060,22 @@ void JPADrawRotYBillboard(JPAEmitterWorkData* pWork, JPABaseParticle* pParticle)
 
 void JKRAramPiece::startDMA(JKRAMCommand* pCommand) {
     if (pCommand->mSrc < 0x80000000) {
-        doneDMA(reinterpret_cast< u32 >(pCommand));
+        doneDMA(PTR_TO_U32(pCommand));
         return;
     }
 
     if (pCommand->mDst >= 0x04000000) {
-        doneDMA(reinterpret_cast< u32 >(pCommand));
+        doneDMA(PTR_TO_U32(pCommand));
         return;
     }
 
     if (pCommand->mDataLength > 0x00E00000) {
-        doneDMA(reinterpret_cast< u32 >(pCommand));
+        doneDMA(PTR_TO_U32(pCommand));
         return;
     }
 
     ARStartDMA(pCommand->mTransferDirection, pCommand->mSrc, pCommand->mDst, pCommand->mDataLength);
-    doneDMA(reinterpret_cast< u32 >(pCommand));
+    doneDMA(PTR_TO_U32(pCommand));
 }
 
 void JAU_JASInitializer::initJASystem(JKRSolidHeap* pHeap) {

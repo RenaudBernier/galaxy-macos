@@ -35,7 +35,7 @@ namespace nw4r {
             ORIGINTYPE_MAX
         };
 
-#ifdef __MWERKS__
+#if defined(__MWERKS__) || defined(TARGET_PC)  // the node offset must be the real one
         typedef ut::LinkList< AnimTransform, offsetof(AnimTransform, mLink) > AnimTransformList;
 #else
         typedef ut::LinkList< AnimTransform, 0 > AnimTransformList;

@@ -545,6 +545,8 @@ void J3DPSMtx33Copy(Mtx3P src, Mtx3P dst) {
         psq_st fr1, 0x18(destination), 0, 0
         stfs fr0, 0x20(destination)
     }
+#else
+    __builtin_memcpy(dst, src, 9 * sizeof(f32));
 #endif
 }
 
@@ -564,6 +566,12 @@ void J3DPSMtx33CopyFrom34(__REGISTER MtxPtr src, __REGISTER Mtx3P dst) {
         stfs w, 20(dst)
         psq_st u, 24(dst), 0, 0
         stfs v, 32(dst)
+    }
+#else
+    for (int r = 0; r < 3; r++) {
+        for (int c = 0; c < 3; c++) {
+            dst[r][c] = src[r][c];
+        }
     }
 #endif
 }

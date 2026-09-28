@@ -1,7 +1,11 @@
 #include "RVLFaceLibInternal.h"
-#include <cstddef>
-#include <cstdio>
+#include <stddef.h>
+#include <stdio.h>
 #include <revolution/gx/GXVert.h>
+
+#ifdef TARGET_PC
+_Static_assert(sizeof(RFLiCharModel) <= sizeof(RFLCharModel), "RFLCharModel storage too small");
+#endif
 
 #define NUM_VTX_POS(size) ((size) / VTX_POS_SIZE)
 #define SIZE_VTX_POS(count) ((count) * VTX_POS_SIZE)
@@ -85,7 +89,7 @@ static const GXColor cFavoriteColor[RFLFavoriteColor_Max] = {
 
 static const GXColor cWhite = {255, 255, 255, 255};
 
-static void RFLSetCoordinate(RFLCoordinateType u, RFLCoordinateType f) {
+RFL_STATIC void RFLSetCoordinate(RFLCoordinateType u, RFLCoordinateType f) {
     RFLCoordinateType r;
 
     union {
@@ -139,7 +143,7 @@ static void RFLSetCoordinate(RFLCoordinateType u, RFLCoordinateType f) {
     coordinateData.rRev = (r & RFLCoordinateType_RevMask) != 0;
 }
 
-static u32 RFLiGetExpressionNum(u32 exprFlags) {
+RFL_STATIC u32 RFLiGetExpressionNum(u32 exprFlags) {
     int i;
     u32 num = 0;
 
@@ -263,7 +267,7 @@ void RFLSetExpression(RFLCharModel* model, RFLExpression expr) {
     imodel->expression = expr;
 }
 
-static RFLExpression RFLGetExpression(const RFLCharModel* model) {
+RFL_STATIC RFLExpression RFLGetExpression(const RFLCharModel* model) {
     RFLiCharModel* imodel = (RFLiCharModel*)model;
     return imodel->expression;
 }
@@ -965,13 +969,13 @@ void RFLiInitTexRes(GXTexObj* texObj, RFLiPartsShpTex part, u16 file, void* buff
     RFLiFree(tex);
 }
 
-static void RFLiTransformCoordinate(s16* to, const s16* from) {
+RFL_STATIC void RFLiTransformCoordinate(s16* to, const s16* from) {
     to[coordinateData.rOff] = coordinateData.rRev ? -from[0] : from[0];
     to[coordinateData.uOff] = coordinateData.uRev ? -from[1] : from[1];
     to[coordinateData.fOff] = coordinateData.fRev ? -from[2] : from[2];
 }
 
-static void RFLDrawShape(const RFLCharModel* model) {
+RFL_STATIC void RFLDrawShape(const RFLCharModel* model) {
     GXCullMode cullMode;
     RFLiCharModel* imodel = (RFLiCharModel*)model;
     RFLiCharModelRes* res = imodel->res;

@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gd.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GDBASE_H
 #define GDBASE_H
 
@@ -139,3 +142,4 @@ void GDFlushCurrToMem();
 #endif
 
 #endif  // GDBASE_H
+#endif  // TARGET_PC && PORT_AURORA

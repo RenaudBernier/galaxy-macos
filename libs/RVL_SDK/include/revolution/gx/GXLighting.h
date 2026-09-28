@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXLIGHTING_H
 #define GXLIGHTING_H
 
@@ -36,3 +39,4 @@ void GXSetChanCtrl(GXChannelID, GXBool, GXColorSrc, GXColorSrc, u32, GXDiffuseFn
 #endif
 
 #endif  // GXLIGHTING_H
+#endif  // TARGET_PC && PORT_AURORA

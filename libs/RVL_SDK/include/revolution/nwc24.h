@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 #include "revolution.h"
-#include <cstdlib>
+#include <stdlib.h>
 #include "revolution/nwc24/NWC24Config.h"
 #include "revolution/nwc24/NWC24Download.h"
 #include "revolution/nwc24/NWC24FileApi.h"

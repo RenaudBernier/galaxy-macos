@@ -30,6 +30,11 @@ inline f32 J3DCalcZValue(__REGISTER MtxPtr m, __REGISTER Vec v) {
     // clang-format on
 
     return out;
+#else
+    // Row 2 of m applied to v, in the paired-single evaluation order.
+    const f32 xz = __builtin_fmaf(v.z, m[2][2], v.x * m[2][0]);
+    const f32 yw = m[2][3] + v.y * m[2][1];
+    return xz + yw;
 #endif
 }
 

@@ -158,7 +158,13 @@ public:
     }
 
     virtual TVec3f* getClippingCenterOffset() const {
+#ifdef TARGET_PC
+        // Returning the address of a temporary dangles; keep the value alive.
+        static TVec3f sOffset(0.0f, 200.0f, 0.0f);
+        return &sOffset;
+#else
         return &(TVec3f(0.0f, 200.0f, 0.0f));
+#endif
     }
 
     virtual bool isSyncClipping() const {
@@ -178,7 +184,13 @@ public:
         return 50.0f;
     };
     virtual TVec3f* getClippingCenterOffset() const {
+#ifdef TARGET_PC
+        // Returning the address of a temporary dangles; keep the value alive.
+        static TVec3f sOffset(0.0f, 200.0f, 0.0f);
+        return &sOffset;
+#else
         return &(TVec3f(0.0f, 200.0f, 0.0f));
+#endif
     };
     virtual bool isSyncClipping() const {
         return true;
@@ -199,7 +211,13 @@ public:
     }
 
     virtual TVec3f* getClippingCenterOffset() const {
+#ifdef TARGET_PC
+        // Returning the address of a temporary dangles; keep the value alive.
+        static TVec3f sOffset(0.0f, 580.0f, 0.0f);
+        return &sOffset;
+#else
         return &TVec3f(0.0f, 580.0f, 0.0f);
+#endif
     }
 
     virtual bool isSyncClipping() const {

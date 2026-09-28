@@ -11,6 +11,13 @@
 #include "JSystem/JKernel/JKRSolidHeap.hpp"
 #include "JSystem/JSupport/JSupport.hpp"
 
+#ifdef TARGET_PC
+// Ver1 banks are walked as a stream of big-endian 32-bit words.
+typedef const BE(u32) BNKWord;
+#else
+typedef u32 BNKWord;
+#endif
+
 template < typename T >
 inline T readStream(void const* stream, u32 offset) {
     return *(T*)((intptr_t)stream + offset);
@@ -58,7 +65,7 @@ JASBNKParser::Ver1::TChunk* JASBNKParser::Ver1::findChunk(void const* stream, u3
 }
 
 JASInstEffect* JASBNKParser::Ver1::createEffector(void const* stream, JKRHeap* heap) {
-    u32* data = (u32*)(intptr_t)stream;
+    BNKWord* data = (BNKWord*)(intptr_t)stream;
     switch (*data++) {
     case 'Rand': {
         TRandData* randData = (TRandData*)data;
@@ -96,8 +103,13 @@ JASBasicBank* JASBNKParser::Ver1::createBasicBank(void const* stream, JKRHeap* h
 
     u8* envt = new (heap, 2) u8[envt_chunk->mSize];
     JASCalc::bcopy(envt_chunk->mData, envt, envt_chunk->mSize);
+#ifdef TARGET_PC
+    // Envelope tables (JASOscillator::Point, s16 triples) are read natively by
+    // the oscillator; convert this private copy once.
+    PortSwap16Array(envt, envt_chunk->mSize / 2);
+#endif
 
-    u32* ptr = &osc_chunk->mCount;
+    BNKWord* ptr = &osc_chunk->mCount;
     u32 count = *ptr++;
     JASOscillator::Data* osc_data = new (heap, 0) JASOscillator::Data[count];
     for (int i = 0; i < count; i++, ptr += sizeof(TOsc) >> 2) {
@@ -114,7 +126,7 @@ JASBasicBank* JASBNKParser::Ver1::createBasicBank(void const* stream, JKRHeap* h
     TListChunk* list = list_chunk;
     for (int i = 0; i < list->count; i++) {
         if (list->mOffsets[i] != 0) {
-            u32* data = (u32*)((intptr_t)stream + list->mOffsets[i]);
+            BNKWord* data = (BNKWord*)((intptr_t)stream + list->mOffsets[i]);
             switch (*data++) {
             case 'Inst': {
                 JASBasicInst* instp = new (heap, 0) JASBasicInst();
@@ -163,7 +175,7 @@ JASBasicBank* JASBNKParser::Ver1::createBasicBank(void const* stream, JKRHeap* h
                     u32 offset = *data++;
                     if (offset != 0) {
                         JASDrumSet::TPerc* percp = new (heap, 0) JASDrumSet::TPerc();
-                        u32* ptr = (u32*)((intptr_t)stream + offset);
+                        BNKWord* ptr = (BNKWord*)((intptr_t)stream + offset);
                         TPercData* perc_data = (TPercData*)(ptr + 1);
                         percp->setVolume(perc_data->mVolume);
                         percp->setPitch(perc_data->mPitch);
@@ -242,6 +254,9 @@ JASBasicBank* JASBNKParser::Ver0::createBasicBank(void const* stream, JKRHeap* h
                             int size = endPtr - points;
                             JASOscillator::Point* table = new (heap, 0) JASOscillator::Point[size];
                             JASCalc::bcopy(points, table, size * sizeof(JASOscillator::Point));
+#ifdef TARGET_PC
+                            PortSwap16Array(table, size * 3);
+#endif
                             osc->mTable = table;
                         } else {
                             osc->mTable = nullptr;
@@ -253,6 +268,9 @@ JASBasicBank* JASBNKParser::Ver0::createBasicBank(void const* stream, JKRHeap* h
                             int size = endPtr - points;
                             JASOscillator::Point* table = new (heap, 0) JASOscillator::Point[size];
                             JASCalc::bcopy(points, table, size * sizeof(JASOscillator::Point));
+#ifdef TARGET_PC
+                            PortSwap16Array(table, size * 3);
+#endif
                             osc->rel_table = table;
                         } else {
                             osc->rel_table = nullptr;
@@ -384,7 +402,11 @@ JASOscillator::Data* JASBNKParser::Ver0::findOscPtr(JASBasicBank* bank, THeader 
 JASOscillator::Point const* JASBNKParser::Ver0::getOscTableEndPtr(JASOscillator::Point const* points) {
     const JASOscillator::Point* ptr = points;
     while (true) {
+#ifdef TARGET_PC
+        s16 tmp = (s16)PortReadBE16(&ptr->_0);  // file data
+#else
         s16 tmp = ptr->_0;
+#endif
         ptr++;
         if (tmp > 10) {
             break;

@@ -14,19 +14,20 @@
 
 class JMapInfoIter;
 
+// BCSV ("JMap") tables are big-endian file data.
 struct JMapItem {
-    /* 0x00 */ u32 mHash;
-    /* 0x04 */ u32 mMask;
-    /* 0x08 */ u16 mOffsData;
+    /* 0x00 */ BE(u32) mHash;
+    /* 0x04 */ BE(u32) mMask;
+    /* 0x08 */ BE(u16) mOffsData;
     /* 0x0A */ u8 mShift;
     /* 0x0B */ u8 mType;
 };
 
 struct JMapData {
-    /* 0x00 */ s32 mNumEntries;
-    /* 0x04 */ s32 mNumFields;
-    /* 0x08 */ s32 mDataOffset;
-    /* 0x0C */ u32 mEntrySize;
+    /* 0x00 */ BE(s32) mNumEntries;
+    /* 0x04 */ BE(s32) mNumFields;
+    /* 0x08 */ BE(s32) mDataOffset;
+    /* 0x0C */ BE(u32) mEntrySize;
     /* 0x10 */ const JMapItem mItems[];
 };
 
@@ -76,13 +77,21 @@ public:
     bool getValueFast(int entryIndex, int itemIndex, f32* pValueOut) const {
         const JMapItem* pItem = &mData->mItems[itemIndex];
         const char* pValue = getEntryAddress(mData, mData->mDataOffset, entryIndex) + pItem->mOffsData;
+#ifdef TARGET_PC
+        *pValueOut = PortReadBEF32(pValue);
+#else
         *pValueOut = *reinterpret_cast< const f32* >(pValue);
+#endif
         return true;
     }
     bool getValueFast(int entryIndex, int itemIndex, bool* pValueOut) const {
         const JMapItem* pItem = &mData->mItems[itemIndex];
         const char* pValue = getEntryAddress(mData, mData->mDataOffset, entryIndex) + pItem->mOffsData;
+#ifdef TARGET_PC
+        *pValueOut = (PortReadBE32(pValue) & pItem->mMask) != 0;
+#else
         *pValueOut = (*reinterpret_cast< const u32* >(pValue) & pItem->mMask) != 0;
+#endif
         return true;
     }
 

@@ -63,7 +63,7 @@ u32 CArGBAOdh::compressGbaOdh(u8* pSrc, u8* pDst, int width, int height, int qua
     }
 
     SArCDJ_OdhMaster master;
-    u16 size[2] = {width, height};
+    u16 size[2] = {(u16)width, (u16)height};
 
     if (cdj_c_initializeCompressOdh(&master, size, quality, pWork, pDst, limitSize) != 0) {
         return 0;
@@ -569,7 +569,7 @@ u32 CArGBAOdh::huffmanCoder(u16* pCoefficients, SArCDJ_HuffmanRequest* pRequest)
             }
         }
 
-        if ((reinterpret_cast< u32 >(pCoefficients) & 2) == 0) {
+        if ((PTR_TO_U32(pCoefficients) & 2) == 0) {
             break;
         }
 

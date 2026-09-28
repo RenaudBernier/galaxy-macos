@@ -17,9 +17,17 @@ public:
     /* 0x20 */ union {
         u32 _20;
         struct {
+#ifdef TARGET_PC
+            // _20 is also tested bit by bit (Metrowerks puts _0 in the top
+            // bits): declare the fields from least to most significant.
+            u32 _8 : 24;
+            u32 mDamageType : 4;
+            u32 _0 : 4;
+#else
             u32 _0 : 4;
             u32 mDamageType : 4;
             u32 _8 : 24;
+#endif
         } mFlags;
     };
 };

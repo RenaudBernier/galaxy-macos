@@ -47,10 +47,10 @@ namespace nw4r {
             u32* p;
 
             Assertion_Printf_("Address:   BackChain   LR save\n");
-            p = (u32*)sp;
+            p = U32_TO_PTR(u32*, sp);
 
             for (i = 0; i < 16; i++) {
-                if (p == NULL || (u32)p == 0xffffffff || ((u32)p & 0x80000000) == 0) {
+                if (p == NULL || PTR_TO_U32(p) == 0xffffffff || (PTR_TO_U32(p) & 0x80000000) == 0) {
                     break;
                 }
                 Assertion_Printf_("%08X:  %08X    %08X ", p, p[0], p[1]);
@@ -58,18 +58,23 @@ namespace nw4r {
                     Assertion_Printf_("\n");
                 }
 
-                p = (u32*)*p;
+                p = U32_TO_PTR(u32*, *p);
             }
 
             return;
         }
 
         __declspec(weak) void VPanic(const char* file, int line, const char* fmt, va_list vlist, bool halt) {
+#ifdef TARGET_PC
+            // PowerPC back-chain stack walking has no host equivalent.
+            u32 stackPointer = 0;
+#else
             register u32 stackPointer;
             asm {
         mr  stackPointer, r1
             }
             stackPointer = *((u32*)stackPointer);
+#endif
             (void)OSDisableInterrupts();
             (void)OSDisableScheduler();
 

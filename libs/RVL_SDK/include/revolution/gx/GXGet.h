@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXGET_H
 #define GXGET_H
 
@@ -24,3 +27,4 @@ GXBool GXGetTexObjMipMap(const GXTexObj *);
 #endif
 
 #endif // GXGET_H
+#endif  // TARGET_PC && PORT_AURORA

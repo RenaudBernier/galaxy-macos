@@ -1,7 +1,7 @@
 #ifndef RVL_SDK_NWC24_TYPES_H
 #define RVL_SDK_NWC24_TYPES_H
 #include "revolution/types.h"
-#include <cstdlib>
+#include <stdlib.h>
 
 #include "revolution/nand.h"
 #include "revolution/vf.h"

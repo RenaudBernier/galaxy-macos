@@ -53,7 +53,7 @@ void* FileRipper::loadToMainRAM(const char* fpath, u8* dest, bool decompress, JK
 
     if (decompress) {
         u8 buf[0x60];
-        copySrc = (u8*)((u32)(buf + 0x3f) / 0x40 * 0x40);
+        copySrc = U32_TO_PTR(u8*, PTR_TO_U32(buf + 0x3f) / 0x40 * 0x40);
         while (true) {
             s32 result = DVDReadPrio(&fileInfo, copySrc, 0x20, 0, 2);
             if (result >= 0) {
@@ -172,7 +172,11 @@ bool FileRipper::decompressSzsSub(u8* src, u8* dest) {
         return false;
     }
 
+#ifdef TARGET_PC
+    u32 data_len = PortReadBE32(src + 4);  // Yaz0 header is big-endian
+#else
     u32 data_len = *(u32*)(src + 4);
+#endif
     u8* dest_end = dest + data_len;
     src += 0x10;
 

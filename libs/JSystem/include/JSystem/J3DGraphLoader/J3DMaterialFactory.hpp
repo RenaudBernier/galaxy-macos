@@ -12,28 +12,28 @@ struct J3DMaterialInitData {
     /* 0x005 */ u8 mZCompLocIdx;
     /* 0x006 */ u8 mZModeIdx;
     /* 0x007 */ u8 mDitherIdx;
-    /* 0x008 */ u16 mMatColorIdx[2];
-    /* 0x00C */ u16 mColorChanIdx[4];
-    /* 0x014 */ u16 mAmbColorIdx[2];
+    /* 0x008 */ BE(u16) mMatColorIdx[2];
+    /* 0x00C */ BE(u16) mColorChanIdx[4];
+    /* 0x014 */ BE(u16) mAmbColorIdx[2];
     /* 0x018 */ u8 field_0x018[0x10];
-    /* 0x028 */ u16 mTexCoordIdx[8];
+    /* 0x028 */ BE(u16) mTexCoordIdx[8];
     /* 0x038 */ u8 field_0x038[0x10];
-    /* 0x048 */ u16 mTexMtxIdx[8];
+    /* 0x048 */ BE(u16) mTexMtxIdx[8];
     /* 0x058 */ u8 field_0x058[0x2c];
-    /* 0x084 */ u16 mTexNoIdx[8];
-    /* 0x094 */ u16 mTevKColorIdx[4];
+    /* 0x084 */ BE(u16) mTexNoIdx[8];
+    /* 0x094 */ BE(u16) mTevKColorIdx[4];
     /* 0x09C */ u8 mTevKColorSel[0x10];
     /* 0x0AC */ u8 mTevKAlphaSel[0x10];
-    /* 0x0BC */ u16 mTevOrderIdx[0x10];
-    /* 0x0DC */ u16 mTevColorIdx[4];
-    /* 0x0E4 */ u16 mTevStageIdx[0x10];
-    /* 0x104 */ u16 mTevSwapModeIdx[0x10];
-    /* 0x124 */ u16 mTevSwapModeTableIdx[4];
+    /* 0x0BC */ BE(u16) mTevOrderIdx[0x10];
+    /* 0x0DC */ BE(u16) mTevColorIdx[4];
+    /* 0x0E4 */ BE(u16) mTevStageIdx[0x10];
+    /* 0x104 */ BE(u16) mTevSwapModeIdx[0x10];
+    /* 0x124 */ BE(u16) mTevSwapModeTableIdx[4];
     /* 0x12C */ u8 field_0x12c[0x18];
-    /* 0x144 */ u16 mFogIdx;
-    /* 0x146 */ u16 mAlphaCompIdx;
-    /* 0x148 */ u16 mBlendIdx;
-    /* 0x14A */ u16 mNBTScaleIdx;
+    /* 0x144 */ BE(u16) mFogIdx;
+    /* 0x146 */ BE(u16) mAlphaCompIdx;
+    /* 0x148 */ BE(u16) mBlendIdx;
+    /* 0x14A */ BE(u16) mNBTScaleIdx;
 };  // size 0x14C
 
 struct J3DIndInitData {
@@ -49,19 +49,89 @@ struct J3DIndInitData {
 };  // size 0x138
 
 struct J3DPatchingInfo {
-    /* 0x0 */ u16 mMatColorOffset;
-    /* 0x2 */ u16 mColorChanOffset;
-    /* 0x4 */ u16 mTexMtxOffset;
-    /* 0x6 */ u16 mTexNoOffset;
-    /* 0x8 */ u16 mTevRegOffset;
-    /* 0xA */ u16 mFogOffset;
+    /* 0x0 */ BE(u16) mMatColorOffset;
+    /* 0x2 */ BE(u16) mColorChanOffset;
+    /* 0x4 */ BE(u16) mTexMtxOffset;
+    /* 0x6 */ BE(u16) mTexNoOffset;
+    /* 0x8 */ BE(u16) mTevRegOffset;
+    /* 0xA */ BE(u16) mFogOffset;
     /* 0xC */ u8 field_0xc[4];
 };  // size 0x10
 
 struct J3DDisplayListInit {
-    /* 0x0 */ u32 mOffset;
-    /* 0x4 */ u32 field_0x4;
+    /* 0x0 */ BE(u32) mOffset;
+    /* 0x4 */ BE(u32) field_0x4;
 };  // size 8
+
+#ifdef TARGET_PC
+// Material sub-tables that contain multi-byte values are read from the
+// (big-endian) file through these converting loads.
+struct J3DFileColorS10 {
+    BE(s16) r, g, b, a;
+};
+
+inline GXColorS10 J3DPortLoad(const J3DFileColorS10& c) {
+    GXColorS10 v = {c.r, c.g, c.b, c.a};
+    return v;
+}
+
+inline void J3DPortSwapVec(Vec& v) {
+    v.x = BE< f32 >::swap(v.x);
+    v.y = BE< f32 >::swap(v.y);
+    v.z = BE< f32 >::swap(v.z);
+}
+
+inline J3DTexMtxInfo J3DPortLoad(const J3DTexMtxInfo& src) {
+    J3DTexMtxInfo v = src;
+    J3DPortSwapVec(v.mCenter);
+    v.mSRT.mScaleX = BE< f32 >::swap(v.mSRT.mScaleX);
+    v.mSRT.mScaleY = BE< f32 >::swap(v.mSRT.mScaleY);
+    v.mSRT.mRotation = BE< s16 >::swap(v.mSRT.mRotation);
+    v.mSRT.mTranslationX = BE< f32 >::swap(v.mSRT.mTranslationX);
+    v.mSRT.mTranslationY = BE< f32 >::swap(v.mSRT.mTranslationY);
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            v.mEffectMtx[i][j] = BE< f32 >::swap(v.mEffectMtx[i][j]);
+        }
+    }
+    return v;
+}
+
+inline J3DFogInfo J3DPortLoad(const J3DFogInfo& src) {
+    J3DFogInfo v = src;
+    v.mCenter = BE< u16 >::swap(v.mCenter);
+    v.mStartZ = BE< f32 >::swap(v.mStartZ);
+    v.mEndZ = BE< f32 >::swap(v.mEndZ);
+    v.mNearZ = BE< f32 >::swap(v.mNearZ);
+    v.mFarZ = BE< f32 >::swap(v.mFarZ);
+    for (int i = 0; i < 10; i++) {
+        v.mFogAdjTable.r[i] = BE< u16 >::swap(v.mFogAdjTable.r[i]);
+    }
+    return v;
+}
+
+inline J3DNBTScaleInfo J3DPortLoad(const J3DNBTScaleInfo& src) {
+    J3DNBTScaleInfo v = src;
+    J3DPortSwapVec(v.mScale);
+    return v;
+}
+
+inline J3DIndTexMtxInfo J3DPortLoad(const J3DIndTexMtxInfo& src) {
+    J3DIndTexMtxInfo v = src;
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 3; j++) {
+            v.field_0x0[i][j] = BE< f32 >::swap(v.field_0x0[i][j]);
+        }
+    }
+    return v;
+}
+
+typedef J3DFileColorS10 J3DFileTevColor;
+#define J3D_PORT_LOAD(x) J3DPortLoad(x)
+#else
+typedef GXColorS10 J3DFileTevColor;
+#define J3D_PORT_LOAD(x) (x)
+#endif
 
 struct J3DTexCoord2Info;
 struct J3DCurrentMtxInfo;
@@ -126,7 +196,7 @@ public:
 
     /* 0x00 */ u16 mMaterialNum;
     /* 0x04 */ J3DMaterialInitData* mpMaterialInitData;
-    /* 0x08 */ u16* mpMaterialID;
+    /* 0x08 */ BE(u16)* mpMaterialID;
     /* 0x0C */ J3DIndInitData* mpIndInitData;
     /* 0x10 */ GXColor* mpMatColor;
     /* 0x14 */ u8* mpColorChanNum;
@@ -138,10 +208,10 @@ public:
     /* 0x2C */ J3DTexCoord2Info* mpTexCoord2Info;
     /* 0x30 */ J3DTexMtxInfo* mpTexMtxInfo;
     /* 0x34 */ J3DTexMtxInfo* field_0x34;
-    /* 0x38 */ u16* mpTexNo;
-    /* 0x3C */ GXCullMode* mpCullMode;
+    /* 0x38 */ BE(u16)* mpTexNo;
+    /* 0x3C */ BE(GXCullMode)* mpCullMode;
     /* 0x40 */ J3DTevOrderInfo* mpTevOrderInfo;
-    /* 0x44 */ GXColorS10* mpTevColor;
+    /* 0x44 */ J3DFileTevColor* mpTevColor;
     /* 0x48 */ GXColor* mpTevKColor;
     /* 0x4C */ u8* mpTevStageNum;
     /* 0x50 */ J3DTevStageInfo* mpTevStageInfo;

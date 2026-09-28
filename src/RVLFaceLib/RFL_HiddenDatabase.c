@@ -1,5 +1,5 @@
 #include "RVLFaceLibInternal.h"
-#include <cstdio>
+#include <stdio.h>
 
 static void writeData_(RFLiHiddenCharData* data) NO_INLINE;
 

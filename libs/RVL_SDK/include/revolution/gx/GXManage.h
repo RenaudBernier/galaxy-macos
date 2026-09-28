@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXMANAGE_H
 #define GXMANAGE_H
 
@@ -30,3 +33,4 @@ void GXSetDrawDone(void);
 #endif
 
 #endif  // GXMANAGE_H
+#endif  // TARGET_PC && PORT_AURORA

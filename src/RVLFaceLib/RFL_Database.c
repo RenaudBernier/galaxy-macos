@@ -202,7 +202,7 @@ static void saveDatabase_(u32 arg) {
     }
 }
 
-static RFLErrcode RFLiSaveDatabaseAsync(RFLiCallback callback) {
+RFL_STATIC RFLErrcode RFLiSaveDatabaseAsync(RFLiCallback callback) {
     RFLiDBManager* mgr;
 
     if (!RFLAvailable()) {
@@ -401,25 +401,25 @@ static void convertInfo2RawCore_(const RFLiCharInfo* info, RFLiCharData* data) {
     data->localonly = info->personal.localOnly;
 }
 
-static void RFLiConvertInfo2Raw(const RFLiCharInfo* info, RFLiCharData* out) {
+RFL_STATIC void RFLiConvertInfo2Raw(const RFLiCharInfo* info, RFLiCharData* out) {
     convertInfo2RawCore_(info, out);
     memcpy(out->creatorName, info->personal.creator,
            RFL_CREATOR_LEN * sizeof(wchar_t));
 }
 
-static void RFLiConvertInfo2HRaw(const RFLiCharInfo* info, RFLiHiddenCharData* out) {
+RFL_STATIC void RFLiConvertInfo2HRaw(const RFLiCharInfo* info, RFLiHiddenCharData* out) {
     convertInfo2RawCore_(info, (RFLiCharData*)out);
     out->birthPadding = 0;
 }
 
-static void RFLiConvertRaw2HRaw(const RFLiCharData* data, RFLiHiddenCharData* out) {
+RFL_STATIC void RFLiConvertRaw2HRaw(const RFLiCharData* data, RFLiHiddenCharData* out) {
     memset(out, 0, sizeof(RFLiHiddenCharData));
     // Copy everything that also exists in hidden (just no creator name)
     memcpy(out, data, sizeof(RFLiCharData) - RFL_CREATOR_LEN * sizeof(wchar_t));
     out->birthPadding = 0;
 }
 
-static RFLErrcode RFLiGetCharRawData(RFLiCharData* out, u16 index) {
+RFL_STATIC RFLErrcode RFLiGetCharRawData(RFLiCharData* out, u16 index) {
     RFLiCharData* data;
 
     if (out == NULL) {
@@ -472,7 +472,7 @@ BOOL RFLIsAvailableOfficialData(u16 index) {
     return RFLiGetCharData(index) != NULL;
 }
 
-static void RFLiSetTemporaryID(RFLiCharInfo* info) {
+RFL_STATIC void RFLiSetTemporaryID(RFLiCharInfo* info) {
     u32* dst = (u32*)&info->createID.data;
     dst[0] = RFLi_CREATE_ID_MASK_TEMPORARY;
     dst[1] = 0;
@@ -596,7 +596,7 @@ BOOL RFLSearchOfficialData(const RFLCreateID* id, u16* index) {
     return success;
 }
 
-static BOOL RFLiIsValidName(const RFLiCharData* data) {
+RFL_STATIC BOOL RFLiIsValidName(const RFLiCharData* data) {
     if (data == NULL) {
         return FALSE;
     }
@@ -615,11 +615,11 @@ BOOL RFLiIsValidName2(const RFLiCharInfo* info) {
     return RFLiIsValidName(&data);
 }
 
-static BOOL RFLiGetIsolation(void) {
+RFL_STATIC BOOL RFLiGetIsolation(void) {
     return !RFLiDBIsLoaded() ? TRUE : RFLiGetDBManager()->database->isolation;
 }
 
-static RFLiHiddenDB* RFLiGetHiddenHeader(void) {
+RFL_STATIC RFLiHiddenDB* RFLiGetHiddenHeader(void) {
     if (!RFLiDBIsLoaded()) {
         return NULL;
     }
@@ -627,7 +627,7 @@ static RFLiHiddenDB* RFLiGetHiddenHeader(void) {
     return &RFLiGetDBManager()->database->hidden;
 }
 
-static BOOL RFLiDBIsLoaded(void) {
+RFL_STATIC BOOL RFLiDBIsLoaded(void) {
     if (!RFLAvailable()) {
         return FALSE;
     }
@@ -639,7 +639,7 @@ static BOOL RFLiDBIsLoaded(void) {
     return !RFLiNeedRepairError() && !RFLiNotFoundError();
 }
 
-static u16 RFLiCalculateCRC(const void* p, u32 len) {
+RFL_STATIC u16 RFLiCalculateCRC(const void* p, u32 len) {
     int i = 0;
     u16 crc = 0;
     const u8* current = (u8*)p;
@@ -715,7 +715,7 @@ static void alarmCreateCb_(OSAlarm* alarm, OSContext* ctx) {
     mgr->database->hidden.crc = crc;
 }
 
-static void RFLiCreateHeaderCRCAsync(RFLiExCallback callback) {
+RFL_STATIC void RFLiCreateHeaderCRCAsync(RFLiExCallback callback) {
     RFLiDBManager* mgr = RFLiGetDBManager();
 
     if (!RFLiIsWorking()) {
@@ -785,7 +785,7 @@ static void alarmCheckCb_(OSAlarm* alarm, OSContext* ctx) {
     mgr->crcInfo.callback(crc);
 }
 
-static void RFLiCheckHeaderCRCAsync(RFLiExCallback callback) {
+RFL_STATIC void RFLiCheckHeaderCRCAsync(RFLiExCallback callback) {
     RFLiDBManager* mgr = RFLiGetDBManager();
 
     if (!RFLiIsWorking()) {

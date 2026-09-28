@@ -17,7 +17,12 @@ public:
     }
 
     Color8(u32 color) {
+#ifdef TARGET_PC
+        // 0xRRGGBBAA, as the big-endian union layout implies.
+        set(color >> 24, color >> 16, color >> 8, color);
+#else
         mColor = color;
+#endif
     }
 
     inline operator GXColor() const {
@@ -25,7 +30,11 @@ public:
     }
 
     inline operator u32() const {
+#ifdef TARGET_PC
+        return (u32)r << 24 | (u32)g << 16 | (u32)b << 8 | a;
+#else
         return mColor;
+#endif
     }
 
     inline const Color8& operator=(const GXColor& rOther) {

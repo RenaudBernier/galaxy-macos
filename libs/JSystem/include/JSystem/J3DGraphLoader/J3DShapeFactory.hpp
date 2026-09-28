@@ -7,26 +7,33 @@ class J3DShapeMtx;
 class J3DShapeDraw;
 struct ResNTAB;
 
+// SHP1 entries, read in place from (big-endian) model data.
 struct J3DShapeInitData {
     /* 0x00 */ u8 mShapeMtxType;
-    /* 0x02 */ u16 mMtxGroupNum;
-    /* 0x04 */ u16 mVtxDescListIndex;
-    /* 0x06 */ u16 mMtxInitDataIndex;
-    /* 0x08 */ u16 mDrawInitDataIndex;
+    /* 0x02 */ BE(u16) mMtxGroupNum;
+    /* 0x04 */ BE(u16) mVtxDescListIndex;
+    /* 0x06 */ BE(u16) mMtxInitDataIndex;
+    /* 0x08 */ BE(u16) mDrawInitDataIndex;
+#ifdef TARGET_PC
+    /* 0x0C */ BE(f32) mRadius;
+    /* 0x10 */ BE(f32) mMin[3];
+    /* 0x1C */ BE(f32) mMax[3];
+#else
     /* 0x0C */ f32 mRadius;
     /* 0x10 */ Vec mMin;
     /* 0x1C */ Vec mMax;
+#endif
 };
 
 struct J3DShapeMtxInitData {
-    /* 0x00 */ u16 mUseMtxIndex;
-    /* 0x02 */ u16 mUseMtxCount;
-    /* 0x04 */ u32 mFirstUseMtxIndex;
+    /* 0x00 */ BE(u16) mUseMtxIndex;
+    /* 0x02 */ BE(u16) mUseMtxCount;
+    /* 0x04 */ BE(u32) mFirstUseMtxIndex;
 };
 
 struct J3DShapeDrawInitData {
-    /* 0x00 */ u32 mDisplayListSize;
-    /* 0x04 */ u32 mDisplayListIndex;
+    /* 0x00 */ BE(u32) mDisplayListSize;
+    /* 0x04 */ BE(u32) mDisplayListIndex;
 };
 
 struct J3DShapeFactory {
@@ -40,9 +47,9 @@ struct J3DShapeFactory {
     s32 calcSizeShapeMtx(u32, int, int) const;
 
     /* 0x00 */ J3DShapeInitData* mShapeInitData;
-    /* 0x04 */ u16* mIndexTable;
-    /* 0x08 */ GXVtxDescList* mVtxDescList;
-    /* 0x0C */ u16* mMtxTable;
+    /* 0x04 */ BE(u16)* mIndexTable;
+    /* 0x08 */ GXVtxDescList* mVtxDescList;  // converted to host order by the loader
+    /* 0x0C */ u16* mMtxTable;               // converted to host order by the loader
     /* 0x10 */ u8* mDisplayListData;
     /* 0x14 */ J3DShapeMtxInitData* mMtxInitData;
     /* 0x18 */ J3DShapeDrawInitData* mDrawInitData;
@@ -57,10 +64,23 @@ struct J3DShapeFactory {
     f32 getRadius(int no) const {
         return mShapeInitData[mIndexTable[no]].mRadius;
     }
+#ifdef TARGET_PC
+    Vec getMin(int no) const {
+        const J3DShapeInitData& d = mShapeInitData[mIndexTable[no]];
+        Vec v = {d.mMin[0], d.mMin[1], d.mMin[2]};
+        return v;
+    }
+    Vec getMax(int no) const {
+        const J3DShapeInitData& d = mShapeInitData[mIndexTable[no]];
+        Vec v = {d.mMax[0], d.mMax[1], d.mMax[2]};
+        return v;
+    }
+#else
     Vec& getMin(int no) const {
         return mShapeInitData[mIndexTable[no]].mMin;
     }
     Vec& getMax(int no) const {
         return mShapeInitData[mIndexTable[no]].mMax;
     }
+#endif
 };

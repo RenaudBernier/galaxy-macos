@@ -273,7 +273,11 @@ void GameEventFlagTableInstance::initSortTable() {
         mSortTable[i].mHashCode = MR::getHashCode(pFlag->mName);
     }
 
+#ifdef TARGET_PC
+    msl::sort(&mSortTable[0], &mSortTable[mLength], GameEventFlagSortLt());
+#else
     std::sort(&mSortTable[0], &mSortTable[mLength], GameEventFlagSortLt());
+#endif
 }
 
 namespace GameEventFlagTable {

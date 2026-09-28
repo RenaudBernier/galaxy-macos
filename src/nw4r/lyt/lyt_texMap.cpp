@@ -70,9 +70,16 @@ namespace nw4r {
         }
 
         void TexMap::ReplaceImage(TPLPalette* p, u32 id) {
-            if (reinterpret_cast< u32 >(p->descriptorArray) < 0x80000000) {
+#ifdef TARGET_PC
+            // PORT: file-reloc - the host TPLBind is idempotent and builds its
+            // own descriptors; the in-file offset can't be read through the
+            // 64-bit struct.
+            TPLBind(p);
+#else
+            if (PTR_TO_U32(p->descriptorArray) < 0x80000000) {
                 TPLBind(p);
             }
+#endif
 
             ReplaceImage(TPLGet(p, id));
         }

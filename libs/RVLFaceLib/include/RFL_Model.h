@@ -24,7 +24,12 @@ typedef enum {
 } RFLCoordinateType;
 
 typedef struct RFLCharModel {
+#ifdef TARGET_PC
+    // Opaque storage for RFLiCharModel, which holds host pointers.
+    u64 dummy[0x100 / 8];
+#else
     u8 dummy[0x88];
+#endif
 } RFLCharModel;
 
 typedef struct RFLDrawSetting {

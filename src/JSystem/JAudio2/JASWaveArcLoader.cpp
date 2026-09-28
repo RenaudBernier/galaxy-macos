@@ -89,12 +89,17 @@ bool JASWaveArc::sendLoadCmd() {
     loadToAramCallbackParams commandInfo;
     commandInfo.mWavArc = this;
     commandInfo.mEntryNum = mEntryNum;
-    commandInfo.mBase = (uintptr_t)mHeap.getBase();
+    commandInfo.mBase = PTR_TO_U32(mHeap.getBase());
     commandInfo._C = ++_58;
 
     _5A++;
 
+#ifdef TARGET_PC
+    // The parameter block holds a pointer: 0x10 bytes on the Wii, larger here.
+    if (JASDvd::getThreadPointer()->sendCmdMsg(loadToAramCallback, &commandInfo, sizeof(commandInfo)) == 0) {
+#else
     if (JASDvd::getThreadPointer()->sendCmdMsg(loadToAramCallback, &commandInfo, 0x10) == 0) {
+#endif
         mHeap.free();
         return false;
     }

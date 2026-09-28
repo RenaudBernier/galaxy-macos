@@ -13,7 +13,11 @@ u32 J3DShapeDraw::countVertex(u32 stride) {
         dl++;
         if (cmd != GX_TRIANGLEFAN && cmd != GX_TRIANGLESTRIP)
             break;
+#ifdef TARGET_PC
+        int vtxNum = PortReadBE16(dl);  // display lists are big-endian
+#else
         int vtxNum = *reinterpret_cast< u16* >(dl);
+#endif
         dl += 2;
         count += vtxNum;
         dl = static_cast< u8* >(dl) + stride * vtxNum;
@@ -39,9 +43,15 @@ void J3DShapeDraw::addTexMtxIndexInDL(u32 stride, u32 attrOffs, u32 valueBase) {
             break;
 
         // Copy count
+#ifdef TARGET_PC
+        int vtxNum = PortReadBE16(oldDL);  // display lists are big-endian
+        oldDL += 2;
+        PortWriteBE16(newDL, vtxNum);
+#else
         int vtxNum = *reinterpret_cast< u16* >(oldDL);
         oldDL += 2;
         *reinterpret_cast< u16* >(newDL) = vtxNum;
+#endif
         newDL += 2;
 
         for (int i = 0; i < vtxNum; i++) {

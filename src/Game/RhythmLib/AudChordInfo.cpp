@@ -2,9 +2,17 @@
 #include <JSystem/JAudio2/JASCriticalSection.hpp>
 #include <JSystem/JKernel/JKRArchive.hpp>
 
+// PORT: file-reloc (`up`/`down` are 4-byte offset fields inside the resource)
 void AudScaleData::initScaleData(u32 base) {
-    up += base;
-    down += base;
+#ifdef TARGET_PC
+    // The stored offsets are big-endian; the relocated pointers are kept as
+    // host-order Wii addresses (PTR32).
+    up.addr = PortReadBE32(&up.addr) + base;
+    down.addr = PortReadBE32(&down.addr) + base;
+#else
+    up = U32_TO_PTR(u8*, PTR_TO_U32(up) + base);
+    down = U32_TO_PTR(u8*, PTR_TO_U32(down) + base);
+#endif
 }
 
 AudChordTable::AudChordTable() : mLoaded(false), mChordCount(0), mScaleCount(0), mChordPtr(nullptr), mScalePtr(nullptr) {
@@ -41,21 +49,35 @@ bool AudChordTable::setChordTableResource(void* pRes) {
     cursor++;
 
     u8* base = (u8*)cursor;
+#ifdef TARGET_PC
+    mChordCount = PortReadBE16(base + 0);
+    mScaleCount = PortReadBE16(base + 2);
+#else
     mChordCount = *(u16*)(base + 0);
     mScaleCount = *(u16*)(base + 2);
-    mChordPtr = (AudChordData**)(base + 4);
-    mScalePtr = (AudScaleData**)(base + 4 + mChordCount * 4);
+#endif
+    mChordPtr = (PTR32(AudChordData)*)(base + 4);
+    mScalePtr = (PTR32(AudScaleData)*)(base + 4 + mChordCount * 4);
 
+    // PORT: file-reloc (pointer tables with 4-byte slots inside the resource)
     if (!alreadyRelocated) {
         // Relocate chord pointers
         for (s32 i = 0; i < mChordCount; i++) {
-            mChordPtr[i] = (AudChordData*)((u32)pRes + (u32)mChordPtr[i]);
+#ifdef TARGET_PC
+            mChordPtr[i].addr = PTR_TO_U32(pRes) + PortReadBE32(&mChordPtr[i].addr);
+#else
+            mChordPtr[i] = U32_TO_PTR(AudChordData*, PTR_TO_U32(pRes) + PTR_TO_U32(mChordPtr[i]));
+#endif
         }
 
         // Relocate scale pointers and init scale data
         for (s32 i = 0; i < mScaleCount; i++) {
-            mScalePtr[i] = (AudScaleData*)((u32)pRes + (u32)mScalePtr[i]);
-            mScalePtr[i]->initScaleData((u32)pRes);
+#ifdef TARGET_PC
+            mScalePtr[i].addr = PTR_TO_U32(pRes) + PortReadBE32(&mScalePtr[i].addr);
+#else
+            mScalePtr[i] = U32_TO_PTR(AudScaleData*, PTR_TO_U32(pRes) + PTR_TO_U32(mScalePtr[i]));
+#endif
+            mScalePtr[i]->initScaleData(PTR_TO_U32(pRes));
         }
 
         *initialized = true;

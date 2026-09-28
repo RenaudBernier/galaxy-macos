@@ -1,3 +1,6 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+#include <revolution/gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GXGEOMETRY_H
 #define GXGEOMETRY_H
 
@@ -44,3 +47,4 @@ void __GXSetViewport(void);
 #endif
 
 #endif // GXGEOMETRY_H
+#endif  // TARGET_PC && PORT_AURORA

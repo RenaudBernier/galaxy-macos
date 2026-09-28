@@ -38,6 +38,20 @@ public:
         return *(mSeqBuff + addr);
     }
 
+    // Sequence data is big-endian.
+#ifdef TARGET_PC
+    u16 get16(u32 addr) const {
+        return PortReadBE16(mSeqBuff + addr);
+    }
+
+    u32 get24(u32 addr) const {
+        return PortReadBE32(mSeqBuff + addr - 1) & 0xffffff;
+    }
+
+    u32 get32(u32 addr) const {
+        return PortReadBE32(mSeqBuff + addr);
+    }
+#else
     u16 get16(u32 addr) const {
         return *(u16*)(mSeqBuff + addr);
     }
@@ -49,6 +63,7 @@ public:
     u32 get32(u32 addr) const {
         return *(u32*)(mSeqBuff + addr);
     }
+#endif
 
     u8* getCur() {
         return mSeqCursor;

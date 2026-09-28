@@ -133,7 +133,13 @@ namespace MR {
         u16 width = pJUTVideo->getFbWidth();
         u16 height = pJUTVideo->getEfbHeight();
         Mtx44 projMtx;
+#ifdef TARGET_PC
+        // Aurora has no Z textures (GX_ZT_REPLACE with a max-depth texel):
+        // put the quad on the far plane instead.
+        C_MTXOrtho(projMtx, 0.0f, height, 0.0f, width, -1.0f, 0.0f);
+#else
         C_MTXOrtho(projMtx, 0.0f, height, 0.0f, width, 0.0f, 1.0f);
+#endif
         GXSetProjection(projMtx, GX_ORTHOGRAPHIC);
         MR::setDefaultViewportAndScissor();
         TMtx34f mtxImm;

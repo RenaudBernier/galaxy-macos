@@ -8,9 +8,11 @@
 #include "Game/Util/CameraUtil.hpp"
 #include "Game/Util/MathUtil.hpp"
 
+#ifndef TARGET_PC  // matching-only redeclaration; not valid standard C++
 namespace JGeometry {
     TVec3< f32 > TVec3< f32 >::operator*(f32) const NO_INLINE;
 }
+#endif
 
 bool Mario::doObjWarp(LiveActor* pActor) {
     if (getPlayer()->getMovementStates().debugMode) {
@@ -533,7 +535,7 @@ bool MarioWarp::close() {
         break;
     }
 
-    case 3:
+    case 3: {
         MR::endGlobalEventCamera("引き戻し", -1, true);
         if (getPlayerMode() != 1) {
             mActor->_A6E = 0;
@@ -549,6 +551,7 @@ bool MarioWarp::close() {
         player->_42A = 0;
         player->_430 = 0;
         break;
+    }
     case 1:
         if (getPlayerMode() != 1) {
             mActor->_A6E = 0;

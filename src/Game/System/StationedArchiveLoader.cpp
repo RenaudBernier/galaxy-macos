@@ -6,6 +6,14 @@
 #include "Game/Util/SingletonHolder.hpp"
 #include <JSystem/JKernel/JKRExpHeap.hpp>
 
+#ifdef TARGET_PC
+// Effectively abstract in the original (only the derived conditions exist);
+// the base definition is needed for the vtable.
+bool StationedArchiveLoader::Condition::isExecute(const MR::StationedFileInfo*) const {
+    return true;
+}
+#endif
+
 StationedArchiveLoader::Condition::~Condition() {
 }
 

@@ -28,7 +28,12 @@ public:
     }
 
     u32 readU32_() {
+#ifdef TARGET_PC
+        // The archive command stream is big-endian.
+        u32 temp = PortReadBE32(mReadPtr);
+#else
         u32 temp = *(u32*)mReadPtr;
+#endif
         mReadPtr += 4;
         return temp;
     }

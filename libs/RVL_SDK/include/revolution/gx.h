@@ -1,3 +1,9 @@
+#if defined(TARGET_PC) && defined(PORT_AURORA)
+// Host build: the GX API is provided by Aurora.
+#include <revolution/types.h>
+#include <dolphin/gx.h>
+#include <port/rvl_gx.h>
+#else  // TARGET_PC && PORT_AURORA
 #ifndef GX_H
 #define GX_H
 
@@ -35,3 +41,4 @@ extern "C" {
 #endif
 
 #endif  // GX_H
+#endif  // TARGET_PC && PORT_AURORA

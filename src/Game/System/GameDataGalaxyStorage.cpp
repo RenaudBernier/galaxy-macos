@@ -11,7 +11,7 @@
 
 namespace {
     inline s32 writeU16(void* pData, u16 value) {
-        *static_cast< u16* >(pData) = value;
+        BinaryDataWriteU16(pData, value);
         return sizeof(value);
     }
 };  // namespace
@@ -25,7 +25,7 @@ bool GameDataSomeScenarioAccessor::isAlreadyVisited() const {
 }
 
 s32 GameDataSomeScenarioAccessor::getMaxCoinNum() const {
-    return MR::clamp(mSomeGalaxyStorage->getMaxCoinNum(mScenarioNum - 1), 0, 999L);
+    return MR::clamp(mSomeGalaxyStorage->getMaxCoinNum(mScenarioNum - 1), 0, (s32)999);
 }
 
 void GameDataSomeScenarioAccessor::setPowerStarFlag(bool val) {
@@ -39,7 +39,7 @@ void GameDataSomeScenarioAccessor::setFlagAlreadyVisited(bool val) {
 void GameDataSomeScenarioAccessor::updateMaxCoinNum(int coinNum) {
     if (getMaxCoinNum() < coinNum) {
         s32 scenarioNo = mScenarioNum - 1;
-        u16 maxCoins = MR::clamp(coinNum, 0, 999L);
+        u16 maxCoins = MR::clamp(coinNum, 0, (s32)999);
         mSomeGalaxyStorage->setMaxCoinNum(scenarioNo, maxCoins);
     }
 }
@@ -97,7 +97,7 @@ s32 GameDataSomeGalaxyStorage::deserialize(const BinaryDataContentAccessor& rAcc
     u16* maxCoinNums = (u16*)rAccessor.getPointer("mMaxCoinNum", (u8*)pData);
     for (s32 idx = 0; idx < 8; idx++) {
         if (maxCoinNums != nullptr) {
-            mMaxCoinNum[idx] = maxCoinNums[idx];
+            mMaxCoinNum[idx] = BinaryDataReadU16(&maxCoinNums[idx]);
         } else {
             mMaxCoinNum[idx] = 0;
         }
@@ -171,7 +171,7 @@ u32 GameDataAllGalaxyStorage::getSignature() const {
 }
 
 s32 GameDataAllGalaxyStorage::deserialize(const u8* pData, u32 dataSize) {
-    s32 attributeNum = *(u16*)(pData + 0);
+    s32 attributeNum = BinaryDataReadU16(pData + 0);
     const char* name;
     BinaryDataContentAccessor accessor((u8*)(pData + 2));
     u32 readOffset = accessor.getHeaderSize() + 2;
@@ -181,7 +181,7 @@ s32 GameDataAllGalaxyStorage::deserialize(const u8* pData, u32 dataSize) {
     for (s32 idx = 0; idx < attributeNum; idx++) {
         name = "mGalaxyName";
         u8* ptr = (u8*)(pData + readOffset);
-        s32 galaxyIndex = findIndex(*(u16*)accessor.getPointer(name, ptr));
+        s32 galaxyIndex = findIndex(BinaryDataReadU16(accessor.getPointer(name, ptr)));
         if (galaxyIndex >= 0) {
             switch (mSomeGalaxyStorages[galaxyIndex]->deserialize(accessor, ptr)) {
             case 0:
@@ -246,7 +246,7 @@ void GameDataSomeGalaxyStorage::serialize(const BinaryDataContentAccessor& rAcce
 
     u16* maxCoinNums = (u16*)rAccessor.getPointer("mMaxCoinNum", pData);
     for (s32 idx = 0; idx < 8; idx++) {
-        maxCoinNums[idx] = mMaxCoinNum[idx];
+        BinaryDataWriteU16(&maxCoinNums[idx], mMaxCoinNum[idx]);
     }
 }
 

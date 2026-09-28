@@ -4,6 +4,10 @@
 #include "Game/Util/ObjUtil.hpp"
 #include <cstdio>
 
+#ifdef TARGET_PC
+extern "C" void PortNotifyPromptA(void);
+#endif
+
 namespace NrvIconAButton {
     NEW_NERVE(IconAButtonNrvOpen, IconAButton, Open);
     NEW_NERVE(IconAButtonNrvWait, IconAButton, Wait);
@@ -108,6 +112,9 @@ void IconAButton::exeWait() {
     if (MR::isFirstStep(this)) {
         MR::startAnim(this, "Press", 0);
     }
+#ifdef TARGET_PC
+    PortNotifyPromptA();  // lets scripted test runs answer "press A" prompts
+#endif
 }
 
 void IconAButton::exeTerm() {

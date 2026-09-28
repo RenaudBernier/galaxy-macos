@@ -185,7 +185,11 @@ ScenarioDataParser::ScenarioDataParser(const char* pName) : NameObj(pName), mSce
 
     DVDCloseDir(&dir);
 
+#ifdef TARGET_PC
+    msl::sort(mScenarioData.begin(), mScenarioData.end(), GalaxyNameSortLt());
+#else
     std::sort(mScenarioData.begin(), mScenarioData.end(), GalaxyNameSortLt());
+#endif
 }
 #pragma pop
 

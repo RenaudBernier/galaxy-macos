@@ -24,7 +24,7 @@ namespace nw4r {
         };
 
         namespace detail {
-            #ifdef __MWERKS__
+            #if defined(__MWERKS__) || defined(TARGET_PC)  // the node offset must be the real one
             typedef ut::LinkList<FontRefLink, offsetof(FontRefLink, mLink)>  FontRefList;
             #else
             typedef ut::LinkList<FontRefLink, 0> FontRefList;
