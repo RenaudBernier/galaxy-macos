@@ -56,9 +56,9 @@ Environment options:
 | Shake (spin)    | F / middle click          | west button              |
 | Nunchuk stick   | W A S D                   | left stick               |
 | D-pad           | arrow keys                | D-pad                    |
-| - / +           | - / = (or Enter)          | Back / Start             |
+| - / + (pause)   | - / = (or Enter, Esc)     | Back / Start             |
 | 1 / 2           | 1 / 2                     | stick clicks             |
-| HOME            | Esc                       | Guide                    |
+| HOME (no menu)  |                           | Guide                    |
 | Tilt remote     | I / K / J / L             |                          |
 | Hold upright    | V (toggle)                |                          |
 

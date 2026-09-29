@@ -106,7 +106,9 @@ void RSO::HBMDraw() {
 HBMSelectBtnNum RSO::HBMGetSelectBtnNum() {
 #ifdef TARGET_PC
     if (HBMGetSelectBtnNumRSO == nullptr) {
-        return HBM_SELECT_NULL;
+        // Without the menu, report it closed right away (as if with the HOME
+        // button), or the game would wait on it forever.
+        return HBM_SELECT_HOMEBTN;
     }
 #endif
     return (*HBMGetSelectBtnNumRSO)();

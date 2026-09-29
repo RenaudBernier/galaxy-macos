@@ -16,9 +16,9 @@
 //   Shake (spin) ... F / middle mouse / gamepad West
 //   Nunchuk stick .. WASD / gamepad left stick
 //   D-pad .......... arrow keys / gamepad D-pad
-//   - / + .......... Minus / Equals or Enter / gamepad Back / Start
+//   - / + .......... Minus / Equals, Enter or Escape / gamepad Back / Start
 //   1 / 2 .......... 1 / 2 / gamepad left / right stick click
-//   HOME ........... Escape / gamepad Guide
+//   HOME ........... gamepad Guide (the HOME Menu itself isn't available)
 //   Remote tilt .... I/K (pitch), J/L (roll); V toggles holding the remote upright
 
 #include "port/input.hpp"
@@ -348,14 +348,13 @@ void readDevices(State& s, u64 now) {
     if (key(SDL_SCANCODE_LCTRL) || key(SDL_SCANCODE_Q)) buttons |= WPAD_BUTTON_Z;
     if (key(SDL_SCANCODE_E)) buttons |= WPAD_BUTTON_C;
     if (key(SDL_SCANCODE_MINUS)) buttons |= WPAD_BUTTON_MINUS;
-    if (key(SDL_SCANCODE_EQUALS) || key(SDL_SCANCODE_RETURN)) buttons |= WPAD_BUTTON_PLUS;
+    if (key(SDL_SCANCODE_EQUALS) || key(SDL_SCANCODE_RETURN) || key(SDL_SCANCODE_ESCAPE)) buttons |= WPAD_BUTTON_PLUS;
     if (key(SDL_SCANCODE_1)) buttons |= WPAD_BUTTON_1;
     if (key(SDL_SCANCODE_2)) buttons |= WPAD_BUTTON_2;
     if (key(SDL_SCANCODE_UP)) buttons |= WPAD_BUTTON_UP;
     if (key(SDL_SCANCODE_DOWN)) buttons |= WPAD_BUTTON_DOWN;
     if (key(SDL_SCANCODE_LEFT)) buttons |= WPAD_BUTTON_LEFT;
     if (key(SDL_SCANCODE_RIGHT)) buttons |= WPAD_BUTTON_RIGHT;
-    if (key(SDL_SCANCODE_ESCAPE)) buttons |= WPAD_BUTTON_HOME;
     shake |= key(SDL_SCANCODE_F);
     stickX += (key(SDL_SCANCODE_D) ? 1.0f : 0.0f) - (key(SDL_SCANCODE_A) ? 1.0f : 0.0f);
     stickY += (key(SDL_SCANCODE_W) ? 1.0f : 0.0f) - (key(SDL_SCANCODE_S) ? 1.0f : 0.0f);
