@@ -49,11 +49,20 @@ JAISoundID AudSoundNameConverter::getSoundID(const char* pName, u32 hash) const 
     }
 
     s32 startingOffset;
+#ifdef TARGET_PC
+    // An unknown category would index before the table (harmless on the Wii).
+    const s32 category = isSE ? getSeSoundCategory(pName) : getOtherSoundCategory(pName);
+    if (category < 0) {
+        return -1;
+    }
+    startingOffset = mGroupItemOffsets[category];
+#else
     if (isSE) {
         startingOffset = mGroupItemOffsets[getSeSoundCategory(pName)];
     } else {
         startingOffset = mGroupItemOffsets[getOtherSoundCategory(pName)];
     }
+#endif
 
     for (s32 i = startingOffset; i < mNumItems; i++) {
         const AudSoundNameData& data = mSoundNameData[i];

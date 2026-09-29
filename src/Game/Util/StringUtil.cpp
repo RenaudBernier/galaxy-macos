@@ -201,6 +201,16 @@ namespace MR {
         u32 i;
 
         for (i = 0; i < num - 1; pDst++, pSrc++, i++) {
+#ifdef TARGET_PC
+            // Message text is in host byte order (converted at load time).
+            const u16 unit = static_cast< u16 >(*pSrc);
+
+            if (unit == 0 || unit > 0xFF) {
+                break;
+            }
+
+            *pDst = static_cast< char >(unit);
+#else
             const char* p = reinterpret_cast< const char* >(pSrc);
 
             if (p[0] != '\0') {
@@ -212,6 +222,7 @@ namespace MR {
             }
 
             *pDst = p[1];
+#endif
         }
 
         *pDst = '\0';
