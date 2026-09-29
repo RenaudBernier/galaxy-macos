@@ -26,6 +26,8 @@ patches applied).
     "build/port/Super Mario Galaxy.app/Contents/MacOS/Super Mario Galaxy" /path/to/RMGK01.rvz
 
 or set `SMG_DISC`. Saves go to `~/Library/Application Support/SuperMarioGalaxy`.
+If the game crashes, the report is also saved to
+`~/Library/Logs/SuperMarioGalaxy/crash.log`.
 
 At the title screen press A and B together. Menus (file select, dialogs)
 use the Wii Remote pointer: aim with the mouse and click.

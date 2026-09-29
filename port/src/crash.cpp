@@ -1,11 +1,14 @@
 // Crash reporting: prints the faulting address and a backtrace for fatal
-// signals. Faults below 4GB are almost always an untranslated Wii address
-// (a u32 used as a pointer without U32_TO_PTR).
+// signals, to stderr and to ~/Library/Logs/SuperMarioGalaxy/crash.log. Faults
+// below 4GB are almost always an untranslated Wii address (a u32 used as a
+// pointer without U32_TO_PTR).
 
 #include "port/memory.hpp"
 
 #include <dlfcn.h>
 #include <execinfo.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/ucontext.h>
 #include <signal.h>
 #include <unistd.h>
@@ -17,9 +20,21 @@
 
 namespace {
 
-void writeStr(const char* s) { (void)!write(STDERR_FILENO, s, strlen(s)); }
+char sCrashLogPath[1024];
+int sCrashLogFd = -1;
+
+void writeStr(const char* s) {
+    const size_t length = strlen(s);
+    (void)!write(STDERR_FILENO, s, length);
+    if (sCrashLogFd >= 0) {
+        (void)!write(sCrashLogFd, s, length);
+    }
+}
 
 void onFatalSignal(int sig, siginfo_t* info, void* uctx) {
+    if (sCrashLogPath[0] != '\0') {
+        sCrashLogFd = open(sCrashLogPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    }
     char buf[256];
     const uintptr_t addr = reinterpret_cast<uintptr_t>(info->si_addr);
     snprintf(buf, sizeof(buf), "\n*** fatal signal %d (%s) at address %#lx\n", sig, strsignal(sig),
@@ -63,12 +78,24 @@ void onFatalSignal(int sig, siginfo_t* info, void* uctx) {
         }
         fp = nextFp;
     }
+    if (sCrashLogFd >= 0) {
+        close(sCrashLogFd);
+        sCrashLogFd = -1;
+        snprintf(buf, sizeof(buf), "*** saved to %s\n", sCrashLogPath);
+        writeStr(buf);
+    }
     signal(sig, SIG_DFL);
     raise(sig);
 }
 
 struct Installer {
     Installer() {
+        if (const char* home = getenv("HOME")) {
+            char dir[1024];
+            snprintf(dir, sizeof(dir), "%s/Library/Logs/SuperMarioGalaxy", home);
+            mkdir(dir, 0755);
+            snprintf(sCrashLogPath, sizeof(sCrashLogPath), "%s/crash.log", dir);
+        }
         struct sigaction sa;
         memset(&sa, 0, sizeof(sa));
         sa.sa_sigaction = onFatalSignal;
