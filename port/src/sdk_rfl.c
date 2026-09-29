@@ -3,6 +3,8 @@
 //
 // The host has no Mii database; RFL behaves as if none were ever created.
 
+// The Mii code's globals are game state, like the game's own (prelude.h).
+#pragma clang section bss = "__DATA,__game_bss" data = "__DATA,__game_data"
 #include "../../src/RVLFaceLib/RFL_MakeRandomFace.c"
 
 #include <stddef.h>

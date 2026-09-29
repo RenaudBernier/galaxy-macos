@@ -16,6 +16,7 @@
 
 #include "port/audio.hpp"
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <port/wii_addr.h>
 
@@ -213,19 +214,21 @@ struct Reverb {
 
 // --- Global DSP state -------------------------------------------------------
 
-DspChannel* sChannels = nullptr;
-u32 sVaram = 0;
-s16 sAdpcmCoef[16][2] = {
+// Saved with save states: where the game's tables are and each channel's
+// playback state (the reverb only holds echo tails, so it isn't).
+PORT_SAVED DspChannel* sChannels = nullptr;
+PORT_SAVED u32 sVaram = 0;
+PORT_SAVED s16 sAdpcmCoef[16][2] = {
     {0, 0},           {0x0800, 0},      {0, 0x0800},      {0x0400, 0x0400},
     {0x1000, -0x0800}, {0x0E00, -0x0600}, {0x0C00, -0x0400}, {0x1200, -0x0A00},
     {0x1068, -0x08C8}, {0x12C0, -0x08FC}, {0x1400, -0x0C00}, {0x0800, -0x0800},
     {0x0400, -0x0400}, {-0x0400, 0x0400}, {-0x0400, 0},      {-0x0800, 0},
 };
-ChannelState sState[kNumChannels];
+PORT_SAVED ChannelState sState[kNumChannels];
 Reverb sReverb;
 bool sWarnedFormat = false;
-s16 sEvolvingHarmonic[64];
-bool sHarmonicInit = false;
+PORT_SAVED s16 sEvolvingHarmonic[64];
+PORT_SAVED bool sHarmonicInit = false;
 
 u32 blockBytes(const DspChannel& c) {
     if (c.samplesPerBlock == 1) {

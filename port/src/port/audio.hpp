@@ -25,5 +25,14 @@ void outputPushDma(const s16* rightLeft, u32 frames, double rateHz);
 // Seconds of audio queued for the device, or a negative value when output is
 // disabled.
 double outputQueuedSeconds();
+// Drops the audio queued for the device (after a save state is loaded).
+void outputFlush();
+
+// --- Save states ----------------------------------------------------------
+
+// While paused, the AI raises no DMA interrupts (audio.cpp).
+void setAiPaused(bool paused);
+// No DSP work or mail in flight.
+bool dspIdle();
 
 }  // namespace port::audio

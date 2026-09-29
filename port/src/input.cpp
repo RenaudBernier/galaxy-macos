@@ -25,6 +25,7 @@
 
 #include "os/scheduler.hpp"
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <revolution/kpad.h>
 #include <revolution/wpad.h>
@@ -115,12 +116,15 @@ struct State {
 // RIGHT HOME SHAKE PX<x> PY<y> (pointer, -1..1) SX<x> SY<y> (stick, -1..1).
 // Each entry holds from its frame until the next entry; an empty entry
 // releases everything. AUTOA taps A whenever the game shows its "press A"
-// prompt (message windows), and only then.
+// prompt (message windows), and only then. SAVE<n>/LOAD<n> save or load save
+// state slot n when the entry is reached.
 struct ScriptStep {
     u32 frame = 0;
     u32 buttons = 0;
     bool shake = false;
     bool autoA = false;
+    int saveSlot = 0;
+    int loadSlot = 0;
     bool pointer = false;
     float px = 0.0f, py = 0.0f;
     float sx = 0.0f, sy = 0.0f;
@@ -173,6 +177,10 @@ std::vector<ScriptStep> parseScript(const char* text) {
                 step.shake = true;
             } else if (t == "AUTOA") {
                 step.autoA = true;
+            } else if (t.size() == 5 && t.compare(0, 4, "SAVE") == 0) {
+                step.saveSlot = t[4] - '0';
+            } else if (t.size() == 5 && t.compare(0, 4, "LOAD") == 0) {
+                step.loadSlot = t[4] - '0';
             } else if (t.size() > 2 && (t[0] == 'P' || t[0] == 'S') && (t[1] == 'X' || t[1] == 'Y')) {
                 const float v = strtof(t.c_str() + 2, nullptr);
                 if (t[0] == 'P') {
@@ -401,6 +409,16 @@ void readDevices(State& s, u64 now) {
 
     const ScriptStep* script = currentScriptStep(s.frame);
     if (script != nullptr) {
+        static const ScriptStep* sLastStep = nullptr;
+        if (script != sLastStep) {
+            sLastStep = script;
+            if (script->saveSlot != 0) {
+                port::savestate::requestSave(script->saveSlot);
+            }
+            if (script->loadSlot != 0) {
+                port::savestate::requestLoad(script->loadSlot);
+            }
+        }
         if (script->autoA) {
             // Tap A (6 frames down, then at least 24 up) while a prompt shows.
             static u32 sLastTap = 0;

@@ -13,6 +13,7 @@
 #include "os/scheduler.hpp"
 #include "port/frame.hpp"
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <aurora/aurora.h>
 #include <aurora/event.h>
@@ -41,14 +42,14 @@ namespace {
 
 constexpr double kFieldRate = 60000.0 / 1001.0;
 
-std::atomic<u32> sRetraceCount{0};
-VIRetraceCallback sPreCallback = nullptr;
-VIRetraceCallback sPostCallback = nullptr;
-OSThreadQueue sRetraceQueue;
-void* sNextFrameBuffer = nullptr;
-void* sCurrentFrameBuffer = nullptr;
-bool sBlack = true;
-bool sDimming = false;
+PORT_SAVED std::atomic<u32> sRetraceCount{0};
+PORT_SAVED VIRetraceCallback sPreCallback = nullptr;
+PORT_SAVED VIRetraceCallback sPostCallback = nullptr;
+PORT_SAVED OSThreadQueue sRetraceQueue;
+PORT_SAVED void* sNextFrameBuffer = nullptr;
+PORT_SAVED void* sCurrentFrameBuffer = nullptr;
+PORT_SAVED bool sBlack = true;
+PORT_SAVED bool sDimming = false;
 OSThread* sRenderThread = nullptr;
 bool sFrameOpen = false;
 bool sQuitRequested = false;
@@ -100,6 +101,26 @@ void pumpEvents() {
     }
 }
 
+// Submits the frame, handles window events and save states, and begins the
+// next frame. Loading a state puts this function's frame (and its callers')
+// back as they were when the state was saved, so nothing after the save state
+// point may use a value computed before it.
+[[gnu::noinline]] void finishFrame() {
+    beginHostWork();
+    aurora_end_frame();
+    sFrameOpen = false;
+    pumpEvents();
+    port::savestate::processRequests();
+    while (!aurora_begin_frame()) {
+        // Window not presentable (e.g. minimized).
+        pumpEvents();
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    }
+    sFrameOpen = true;
+    endHostWork();
+    port::input::beginFrame();
+}
+
 }  // namespace
 
 namespace port::frame {
@@ -148,18 +169,7 @@ void PortGXCopyDisp(void* dest, GXBool clear) {
     if (OSGetCurrentThread() != sRenderThread || !sFrameOpen) {
         return;
     }
-    beginHostWork();
-    aurora_end_frame();
-    sFrameOpen = false;
-    pumpEvents();
-    while (!aurora_begin_frame()) {
-        // Window not presentable (e.g. minimized).
-        pumpEvents();
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-    }
-    sFrameOpen = true;
-    endHostWork();
-    port::input::beginFrame();
+    finishFrame();
 }
 
 u32 VIGetRetraceCount(void) {

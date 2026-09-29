@@ -10,6 +10,7 @@
 // CPU), and every transfer goes through ARStartDMA, which adds the MEM2 base.
 
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <revolution/aralt.h>
 #include <revolution/os.h>
@@ -18,10 +19,10 @@
 
 namespace {
 
-u32 sBaseAdr = 0;           // Wii address of the ARAM backing (MEM2 arena low)
-u32 sMemoryTop = 0x90000000;  // next ARAlloc address (Wii address)
-u32 sSize = 0;
-bool sInitialized = false;
+PORT_SAVED u32 sBaseAdr = 0;           // Wii address of the ARAM backing (MEM2 arena low)
+PORT_SAVED u32 sMemoryTop = 0x90000000;  // next ARAlloc address (Wii address)
+PORT_SAVED u32 sSize = 0;
+PORT_SAVED bool sInitialized = false;
 
 }  // namespace
 

@@ -27,6 +27,7 @@
 #include "os/scheduler.hpp"
 #include "port/audio.hpp"
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <port/wii_addr.h>
 
@@ -44,8 +45,8 @@
 #include <vector>
 
 extern "C" {
-DSPTaskInfo* __DSP_first_task = nullptr;
-DSPTaskInfo* __DSP_curr_task = nullptr;
+PORT_SAVED DSPTaskInfo* __DSP_first_task = nullptr;
+PORT_SAVED DSPTaskInfo* __DSP_curr_task = nullptr;
 }
 
 namespace {
@@ -56,16 +57,23 @@ using Clock = std::chrono::steady_clock;
 // AI
 // ---------------------------------------------------------------------------
 
-struct AiState {
-    std::mutex mutex;
-    std::condition_variable cv;
-    std::thread thread;
+// The AI's registers, as the game set them (saved with save states).
+struct AiRegs {
     AIDCallback callback = nullptr;
     u32 dmaAddr = 0;
     u32 dmaLength = 0;  // bytes
     u32 sampleRate = 0;  // 0: 32 kHz, 1: 48 kHz (AISetDSPSampleRate)
     bool running = false;
+};
+PORT_SAVED AiRegs sAiRegs;
+
+struct AiState {
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::thread thread;
+    AiRegs& regs = sAiRegs;
     bool started = false;
+    bool paused = false;  // no DMA interrupts while a save state is taken or loaded
 };
 
 AiState& ai() {
@@ -97,8 +105,8 @@ void aiThreadMain() {
     std::unique_lock lock(s.mutex);
     Clock::time_point next = Clock::now();
     while (true) {
-        s.cv.wait(lock, [&] { return s.running && s.dmaLength != 0; });
-        double seconds = (s.dmaLength / 4.0) / aiRateHz(s.sampleRate);
+        s.cv.wait(lock, [&] { return s.regs.running && s.regs.dmaLength != 0 && !s.paused; });
+        double seconds = (s.regs.dmaLength / 4.0) / aiRateHz(s.regs.sampleRate);
         // Follow the output device's clock: run slightly fast while little
         // audio is queued and slightly slow while a lot is.
         const double queued = port::audio::outputQueuedSeconds();
@@ -113,14 +121,14 @@ void aiThreadMain() {
         if (next < now - period * 4) {
             next = now + period;  // resynchronise after a stall instead of bursting
         }
-        if (s.cv.wait_until(lock, next, [&] { return !s.running; })) {
+        if (s.cv.wait_until(lock, next, [&] { return !s.regs.running || s.paused; })) {
             next = Clock::now();
             continue;
         }
         // The block the AI plays now is the one the game handed to AIInitDMA
         // during the previous interrupt.
-        port::audio::outputPushDma(resolveDmaBuffer(s.dmaAddr), s.dmaLength / 4, aiRateHz(s.sampleRate));
-        AIDCallback cb = s.callback;
+        port::audio::outputPushDma(resolveDmaBuffer(s.regs.dmaAddr), s.regs.dmaLength / 4, aiRateHz(s.regs.sampleRate));
+        AIDCallback cb = s.regs.callback;
         if (cb != nullptr) {
             lock.unlock();
             port::os::postInterrupt([cb] { cb(); });
@@ -240,6 +248,23 @@ void runCommand(const std::vector<u32>& words) {
 
 }  // namespace
 
+namespace port::audio {
+
+void setAiPaused(bool paused) {
+    AiState& s = ai();
+    std::lock_guard lock(s.mutex);
+    s.paused = paused;
+    s.cv.notify_all();
+}
+
+bool dspIdle() {
+    DspState& s = dsp();
+    std::lock_guard lock(s.mutex);
+    return s.pendingSubFrames.empty() && s.fromDsp.empty() && s.expectCount && s.words.empty();
+}
+
+}  // namespace port::audio
+
 extern "C" {
 
 // --- AI --------------------------------------------------------------------
@@ -249,29 +274,29 @@ void AIInit(u8*) {}
 AIDCallback AIRegisterDMACallback(AIDCallback callback) {
     AiState& s = ai();
     std::lock_guard lock(s.mutex);
-    AIDCallback prev = s.callback;
-    s.callback = callback;
+    AIDCallback prev = s.regs.callback;
+    s.regs.callback = callback;
     return prev;
 }
 
 void AIInitDMA(u32 addr, u32 length) {
     AiState& s = ai();
     std::lock_guard lock(s.mutex);
-    s.dmaAddr = addr;
-    s.dmaLength = length;
+    s.regs.dmaAddr = addr;
+    s.regs.dmaLength = length;
     s.cv.notify_all();
 }
 
 void AISetDSPSampleRate(u32 rate) {
     AiState& s = ai();
     std::lock_guard lock(s.mutex);
-    s.sampleRate = rate;
+    s.regs.sampleRate = rate;
 }
 
 void AIStartDMA(void) {
     AiState& s = ai();
     std::lock_guard lock(s.mutex);
-    s.running = true;
+    s.regs.running = true;
     if (!s.started) {
         s.started = true;
         s.thread = std::thread(aiThreadMain);
@@ -283,7 +308,7 @@ void AIStartDMA(void) {
 void AIStopDMA(void) {
     AiState& s = ai();
     std::lock_guard lock(s.mutex);
-    s.running = false;
+    s.regs.running = false;
     s.cv.notify_all();
 }
 

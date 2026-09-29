@@ -3,6 +3,7 @@
 
 #include "os/scheduler.hpp"
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <revolution/gx.h>
 #include <revolution/mtx.h>
@@ -13,8 +14,8 @@ volatile PortWGPipe PortGXFifo;
 
 namespace {
 
-GXDrawSyncCallback sDrawSyncCallback = nullptr;
-u16 sLastDrawSyncToken = 0;
+PORT_SAVED GXDrawSyncCallback sDrawSyncCallback = nullptr;
+PORT_SAVED u16 sLastDrawSyncToken = 0;
 
 // From the RVL SDK's GXFrameBuf.c (src/RVL_SDK/gx).
 u32 numXfbLines(u32 efbHt, u32 iScale) {

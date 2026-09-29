@@ -32,6 +32,10 @@
 // and everything else to the host allocator (port/src/memory.cpp).
 #pragma clang section text = "__TEXT,__game,regular,pure_instructions"
 
+// Its global variables go into sections of their own too, so save states
+// (port/src/savestate.cpp) can capture the game's state and nothing else.
+#pragma clang section bss = "__DATA,__game_bss" data = "__DATA,__game_data"
+
 // Metrowerks pragmas that clang doesn't know are harmless; silence the noise.
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
 

@@ -28,6 +28,7 @@ constexpr int64_t kUnixTo2000 = 946684800;
 
 Clock::time_point sBootSteady;
 int64_t sBootTicks = 0;  // ticks since 2000 at boot
+int64_t sTickOffset = 0;  // moves the time base when a save state is loaded
 std::once_flag sInitOnce;
 
 void initTimeBase() {
@@ -43,11 +44,11 @@ void initTimeBase() {
 int64_t ticksNow() {
     initTimeBase();
     const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - sBootSteady).count();
-    return sBootTicks + (int64_t)((__int128)ns * kTicksPerSec / 1000000000);
+    return sBootTicks + sTickOffset + (int64_t)((__int128)ns * kTicksPerSec / 1000000000);
 }
 
 Clock::time_point ticksToSteady(int64_t ticks) {
-    const int64_t delta = ticks - sBootTicks;
+    const int64_t delta = ticks - sBootTicks - sTickOffset;
     return sBootSteady + std::chrono::nanoseconds((int64_t)((__int128)delta * 1000000000 / kTicksPerSec));
 }
 
@@ -135,6 +136,35 @@ void armLocked(OSAlarm* alarm, int64_t fire, OSAlarmHandler handler) {
 }
 
 }  // namespace
+
+namespace port::os {
+
+std::unique_lock<std::mutex> lockAlarms() { return std::unique_lock<std::mutex>(sAlarmLock); }
+
+void captureAlarmState(AlarmState& out) {
+    out.ticks = ticksNow();
+    out.queue.assign(sQueue.begin(), sQueue.end());
+    out.generations.assign(sGeneration.begin(), sGeneration.end());
+}
+
+void restoreAlarmState(const AlarmState& state) {
+    sTickOffset += state.ticks - ticksNow();
+    sQueue.clear();
+    for (const auto& [fire, alarm] : state.queue) {
+        sQueue.emplace(fire, alarm);
+    }
+    sGeneration.clear();
+    for (const auto& [alarm, generation] : state.generations) {
+        sGeneration[alarm] = generation;
+    }
+    if (!sQueue.empty() && !sThreadStarted) {
+        sThreadStarted = true;
+        std::thread(alarmThreadMain).detach();
+    }
+    sAlarmCv.notify_all();
+}
+
+}  // namespace port::os
 
 extern "C" {
 

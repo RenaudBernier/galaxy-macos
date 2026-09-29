@@ -5,10 +5,9 @@
 // window starting at the executable image, presented as Wii addresses
 // 0x80000000-0xFFFFFFFF:
 //
-//   0x80000000  executable image (static data, string literals)
-//   ...         MEM1 arena (after the image, 16MB aligned)
-//   0x90000000  MEM2 arena (moved up if the image + MEM1 don't fit below)
-//   ...         game main-thread stack
+//   0x80000000  executable image (code, static data)
+//   ...         MEM1 arena, MEM2 arena, then the game thread stacks, in a
+//               zero-fill section at the end of the image
 //
 // Global operator new/delete: allocations made by game code (functions in the
 // __TEXT,__game section, see prelude.h) go to the game's JKRHeap; everything
@@ -27,6 +26,9 @@
 #include <cstring>
 #include <new>
 
+#define PORT_STRINGIFY_(x) #x
+#define PORT_STRINGIFY(x) PORT_STRINGIFY_(x)
+
 extern "C" {
 uintptr_t gPortWiiBase = 0;
 
@@ -40,8 +42,18 @@ int JKRHeap_PortIsReady(void);
 extern "C" char sGameTextStart __asm("section$start$__TEXT$__game");
 extern "C" char sGameTextEnd __asm("section$end$__TEXT$__game");
 
+// The game's memory is a zero-fill section at the end of the executable
+// image: nothing else can be mapped there first, it is at the same address on
+// every launch (ASLR is off, see main.cpp), which save states need, and it
+// costs no disk space. It holds MEM1, MEM2 and the game thread stacks (init).
+#define PORT_GAME_MEMORY_SIZE 402653184  // 384 MB
+asm(".zerofill __GAMEMEM,__memory,_smg_game_memory," PORT_STRINGIFY(PORT_GAME_MEMORY_SIZE) ",14");
+extern "C" uint8_t smg_game_memory[];
+
 namespace port::mem {
 namespace {
+
+constexpr uintptr_t kGameMemorySize = PORT_GAME_MEMORY_SIZE;
 
 constexpr uintptr_t kWindowSize = 0x80000000ull;
 constexpr uintptr_t k16MB = 16ull << 20;
@@ -50,12 +62,6 @@ Layout sLayout;
 
 uintptr_t alignUp(uintptr_t v, uintptr_t a) { return (v + a - 1) & ~(a - 1); }
 
-// Reserve [addr, addr+size) exactly; never clobbers existing mappings.
-bool mapFixed(uintptr_t addr, size_t size) {
-    mach_vm_address_t a = addr;
-    kern_return_t kr = mach_vm_allocate(mach_task_self(), &a, size, VM_FLAGS_FIXED);
-    return kr == KERN_SUCCESS && a == addr;
-}
 
 void imageBounds(uintptr_t& start, uintptr_t& end) {
     const auto* mh = reinterpret_cast<const mach_header_64*>(_dyld_get_image_header(0));
@@ -108,26 +114,6 @@ void freeThreadStack(void* stack) {
     }
 }
 
-// Finds the lowest free range of `size` bytes at or above `from` (aligned to
-// `align`) that ends below `limit`.
-uintptr_t findFreeRange(uintptr_t from, size_t size, uintptr_t align, uintptr_t limit) {
-    uintptr_t candidate = alignUp(from, align);
-    while (candidate + size <= limit) {
-        mach_vm_address_t addr = candidate;
-        mach_vm_size_t regionSize = 0;
-        vm_region_basic_info_data_64_t info;
-        mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
-        mach_port_t object = MACH_PORT_NULL;
-        const kern_return_t kr = mach_vm_region(mach_task_self(), &addr, &regionSize, VM_REGION_BASIC_INFO_64,
-                                                reinterpret_cast<vm_region_info_t>(&info), &count, &object);
-        if (kr != KERN_SUCCESS || addr >= candidate + size) {
-            return candidate;  // nothing mapped in [candidate, candidate + size)
-        }
-        candidate = alignUp(addr + regionSize, align);
-    }
-    return 0;
-}
-
 bool init(uint32_t mem1Size, uint32_t mem2Size, uint32_t mainStackSize) {
     uintptr_t imgStart, imgEnd;
     imageBounds(imgStart, imgEnd);
@@ -140,11 +126,11 @@ bool init(uint32_t mem1Size, uint32_t mem2Size, uint32_t mainStackSize) {
     const uintptr_t stackOffset = alignUp(mem2Offset + mem2Size, k16MB);
     const uintptr_t total = stackOffset + stacksSize;
 
-    const uintptr_t base = findFreeRange(imgEnd, total, k16MB, gPortWiiBase + kWindowSize);
-    if (base == 0 || !mapFixed(base, total)) {
-        PORT_FATAL("mem", "could not reserve {} MB of game memory within 2 GB of the executable", total >> 20);
+    if (total > kGameMemorySize) {
+        PORT_FATAL("mem", "{} MB of game memory don't fit the {} MB reserved", total >> 20, kGameMemorySize >> 20);
         return false;
     }
+    const auto base = reinterpret_cast<uintptr_t>(smg_game_memory);
 
     const uintptr_t mem1 = base;
     const uintptr_t mem2 = base + mem2Offset;

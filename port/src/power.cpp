@@ -3,6 +3,7 @@
 #include "port/power.hpp"
 #include "port/log.hpp"
 #include "os/scheduler.hpp"
+#include "port/savestate.hpp"
 
 #include <revolution/os.h>
 
@@ -10,7 +11,7 @@
 #include <cstdlib>
 
 namespace {
-std::atomic<OSPowerCallback> sPowerCallback{nullptr};
+PORT_SAVED std::atomic<OSPowerCallback> sPowerCallback{nullptr};
 }  // namespace
 
 namespace port::os {

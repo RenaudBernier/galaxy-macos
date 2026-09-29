@@ -47,6 +47,9 @@ struct HostThread {
     void* (*entry)(void*) = nullptr;
     void* arg = nullptr;
     void* stack = nullptr;
+    size_t stackSize = 0;
+    uintptr_t parkFp = 0;  // frame of waitForCpu while blocked (save states)
+    bool started = false;  // has entered the game's thread function
     bool interruptsEnabled = true;
     bool cancelled = false;
     bool yielding = false;
@@ -148,9 +151,11 @@ void reschedule() {
     pthread_exit(nullptr);
 }
 
-// Blocks the calling host thread until its OSThread owns the CPU.
-void waitForCpu(Lock& lock) {
+// Blocks the calling host thread until its OSThread owns the CPU. Every
+// blocked game thread waits here, which is where save states find them.
+[[gnu::noinline]] void waitForCpu(Lock& lock) {
     HostThread* self = tSelf;
+    self->parkFp = reinterpret_cast<uintptr_t>(__builtin_frame_address(0));
     if (gRunning == nullptr && !gPending.empty()) {
         gInterruptCv.notify_one();
     }
@@ -300,6 +305,7 @@ void* hostEntry(void* arg) {
     {
         Lock lock(gLock);
         waitForCpu(lock);
+        h->started = true;
     }
     void* ret = h->entry(h->arg);
     OSExitThread(ret);
@@ -375,6 +381,9 @@ void initScheduler(OSThread* defaultThread, void* stackBase, void* stackEnd) {
     auto* h = new HostThread();
     h->thread = defaultThread;
     h->pthread = pthread_self();
+    h->stack = stackEnd;
+    h->stackSize = static_cast<u8*>(stackBase) - static_cast<u8*>(stackEnd);
+    h->started = true;
     std::memset(defaultThread, 0, sizeof(OSThread));
     defaultThread->state = kRunning;
     defaultThread->attr = kAttrDetach;
@@ -471,6 +480,131 @@ void waitUntil(const std::function<bool()>& pred) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Save states
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Walks the frame records from `fp` (the frame of the function a thread is
+// parked in) up to the thread's outermost game frame, recording the frame
+// pointers and return addresses on the way.
+bool describeStack(uintptr_t fp, uintptr_t lo, uintptr_t hi, ThreadState& out) {
+    out.regionStart = fp + 16;  // the park function's caller's frames start here
+    out.regionEnd = out.regionStart;
+    out.chain.clear();
+    bool inGame = false;  // the function owning the frame at `fp` is game code
+    for (int depth = 0; depth < 1024; depth++) {
+        if (fp < lo || fp + 16 > hi || (fp & 7) != 0) {
+            return false;
+        }
+        const auto* record = reinterpret_cast<const uintptr_t*>(fp);
+        const uintptr_t next = record[0];
+        const uintptr_t ret = record[1];
+        out.chain.push_back(fp);
+        out.chain.push_back(ret);
+        const bool callerInGame = port::mem::isGameCode(reinterpret_cast<void*>(ret));
+        if (inGame && !callerInGame) {
+            out.regionEnd = fp + 16;
+            return true;
+        }
+        inGame = callerInGame;
+        if (next <= fp) {
+            return false;
+        }
+        fp = next;
+    }
+    return false;
+}
+
+}  // namespace
+
+Lock lockScheduler() { return Lock(gLock); }
+
+bool captureSchedulerState(SchedulerState& out, uintptr_t runningFp, std::string& why) {
+    out.threads.clear();
+    out.seq = gSeq;
+    if (gSchedulerSuspend != 0 || tSelf == nullptr || gRunning != tSelf->thread) {
+        why = "the game is in the middle of a system operation";
+        return false;
+    }
+    for (OSThread* t : gThreads) {
+        HostThread* h = host(t);
+        ThreadState ts;
+        ts.thread = t;
+        ts.started = h->started;
+        ts.interruptsEnabled = h->interruptsEnabled;
+        ts.yielding = h->yielding;
+        ts.readySeq = h->readySeq;
+        const auto lo = reinterpret_cast<uintptr_t>(h->stack);
+        const uintptr_t hi = lo + h->stackSize;
+        bool ok = true;
+        if (t == gRunning) {
+            ok = describeStack(runningFp, lo, hi, ts);
+        } else if (h->started) {
+            // Parked mid-work (preempted) rather than waiting for something.
+            if (t->state != kWaiting && t->suspend <= 0) {
+                why = "the game is busy (loading?)";
+                return false;
+            }
+            ok = describeStack(h->parkFp, lo, hi, ts);
+        }
+        if (!ok) {
+            why = "a game thread has an unexpected call stack";
+            return false;
+        }
+        out.threads.push_back(std::move(ts));
+    }
+    return true;
+}
+
+bool matchesSchedulerState(const SchedulerState& saved, uintptr_t runningFp, std::string& why) {
+    SchedulerState current;
+    if (!captureSchedulerState(current, runningFp, why)) {
+        return false;
+    }
+    if (current.threads.size() != saved.threads.size()) {
+        why = "the game isn't running the same threads as when the state was saved";
+        return false;
+    }
+    for (const ThreadState& s : saved.threads) {
+        const ThreadState* c = nullptr;
+        for (const ThreadState& candidate : current.threads) {
+            if (candidate.thread == s.thread) {
+                c = &candidate;
+                break;
+            }
+        }
+        if (c == nullptr || c->started != s.started) {
+            why = "the game isn't running the same threads as when the state was saved";
+            return false;
+        }
+        if (c->regionStart != s.regionStart || c->regionEnd != s.regionEnd || c->chain != s.chain) {
+            why = "a game thread is somewhere else than when the state was saved";
+            return false;
+        }
+    }
+    return true;
+}
+
+void restoreSchedulerState(const SchedulerState& saved) {
+    for (const ThreadState& s : saved.threads) {
+        if (HostThread* h = host(s.thread)) {
+            h->interruptsEnabled = s.interruptsEnabled;
+            h->yielding = s.yielding;
+            h->readySeq = s.readySeq;
+        }
+    }
+    gSeq = saved.seq;
+}
+
+size_t pendingInterruptCount() { return gPending.size(); }
+
+void dropPendingInterrupts() {
+    gPending.clear();
+    gHasPending = false;
+}
+
 }  // namespace port::os
 
 // ---------------------------------------------------------------------------
@@ -548,6 +682,7 @@ BOOL OSCreateThread(OSThread* thread, void* (*func)(void*), void* param, void* s
         PORT_FATAL("os", "out of game thread stacks");
         __builtin_trap();
     }
+    h->stackSize = hostStackSize;
     // Guard page at the bottom of the host stack.
     mprotect(h->stack, 16384, PROT_NONE);
     gHost[thread] = h;

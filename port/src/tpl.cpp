@@ -19,6 +19,7 @@
 // All offsets are relative to the start of the palette.
 
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <revolution/tpl.h>
 
@@ -41,8 +42,8 @@ inline f32 beF32(const u8* p) {
 
 // Descriptor storage inside the executable image, i.e. inside the Wii address
 // window: game code converts these pointers with PTR_TO_U32.
-alignas(32) u8 sPool[512 * 1024];
-size_t sPoolUsed = 0;
+alignas(32) PORT_SAVED u8 sPool[512 * 1024];
+PORT_SAVED size_t sPoolUsed = 0;
 
 void* poolAlloc(size_t size) {
     size = (size + 31) & ~size_t(31);
@@ -159,3 +160,24 @@ BOOL PortTPLIsBound(TPLPalettePtr pal) {
 }
 
 }  // extern "C"
+
+namespace port::tpl {
+
+std::vector<BoundPalette> boundPalettes() {
+    std::lock_guard lock(sMutex);
+    std::vector<BoundPalette> out;
+    for (const auto& [palette, bound] : sBound) {
+        out.push_back({palette, bound.descriptors, bound.count});
+    }
+    return out;
+}
+
+void setBoundPalettes(const std::vector<BoundPalette>& palettes) {
+    std::lock_guard lock(sMutex);
+    sBound.clear();
+    for (const BoundPalette& p : palettes) {
+        sBound[static_cast<const TPLPalette*>(p.palette)] = {static_cast<TPLDescriptor*>(p.descriptors), p.count};
+    }
+}
+
+}  // namespace port::tpl

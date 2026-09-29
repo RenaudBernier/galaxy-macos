@@ -7,6 +7,7 @@
 // completion callback as an interrupt, like the IOS reply would.
 
 #include "os/scheduler.hpp"
+#include "port/savestate.hpp"
 
 #include <revolution/nand.h>
 
@@ -422,3 +423,12 @@ void NANDInitBanner(NANDBanner* banner, u32 flag, const u16* title, const u16* c
 }
 
 }  // extern "C"
+
+namespace port::nand {
+
+bool idle() {
+    std::lock_guard lock(sMutex);
+    return sFiles.empty();
+}
+
+}  // namespace port::nand

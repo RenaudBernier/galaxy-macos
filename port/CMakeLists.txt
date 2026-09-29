@@ -121,7 +121,7 @@ target_compile_options(smg PRIVATE $<$<COMPILE_LANGUAGE:CXX,OBJCXX>:-fno-excepti
 # The 16-bit wide-string runtime must match the game's -fshort-wchar ABI.
 set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/wchar16.c" "${CMAKE_CURRENT_SOURCE_DIR}/src/sdk_rfl.c"
   PROPERTIES COMPILE_OPTIONS -fshort-wchar)
-target_link_libraries(smg PRIVATE smg_game aurora::main fmt::fmt iconv)
+target_link_libraries(smg PRIVATE smg_game aurora::main fmt::fmt iconv compression "-framework AppKit")
 target_include_directories(smg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
 # Link every game object, as the original build did (factory tables, static
 # registration and the like would otherwise be dropped).

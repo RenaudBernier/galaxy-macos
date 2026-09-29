@@ -3,6 +3,7 @@
 // in the way the game already handles, or does nothing when that's correct.
 
 #include "port/log.hpp"
+#include "port/savestate.hpp"
 
 #include <revolution/nwc24.h>
 #include <revolution/os.h>
@@ -168,7 +169,7 @@ u32 __OSFpscrEnableBits = 0;
 namespace {
 thread_local OSContext tDummyContext;
 thread_local OSContext* tCurrentContext = nullptr;
-OSErrorHandler sErrorHandlers[32];
+PORT_SAVED OSErrorHandler sErrorHandlers[32];
 }  // namespace
 
 OSContext* OSGetCurrentContext(void) { return tCurrentContext != nullptr ? tCurrentContext : &tDummyContext; }

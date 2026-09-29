@@ -3,6 +3,7 @@
 #include "os/scheduler.hpp"
 #include "port/log.hpp"
 #include "port/memory.hpp"
+#include "port/savestate.hpp"
 
 #include <iconv.h>
 
@@ -14,10 +15,10 @@
 namespace port::os {
 
 namespace {
-void* sArenaLo = nullptr;
-void* sArenaHi = nullptr;
-void* sMem2ArenaLo = nullptr;
-void* sMem2ArenaHi = nullptr;
+PORT_SAVED void* sArenaLo = nullptr;
+PORT_SAVED void* sArenaHi = nullptr;
+PORT_SAVED void* sMem2ArenaLo = nullptr;
+PORT_SAVED void* sMem2ArenaHi = nullptr;
 bool sReportEnabled = true;
 }  // namespace
 

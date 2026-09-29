@@ -7,6 +7,8 @@
 * Boot, strap screen, title (with streamed music), file select, save data
   (host files), the prologue (picture book, Peach's letter) and gameplay, at a
   steady 60 fps.
+* Save states: five slots in the States menu, lasting across launches (same
+  build only).
 * THP movies: video (baseline JPEG with THP's quirks) and audio; the prologue
   movie plays with subtitles. All nine movies on the disc decode cleanly
   offline (every frame of every movie).

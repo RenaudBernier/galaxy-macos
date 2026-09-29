@@ -14,14 +14,19 @@
 #include "port/frame.hpp"
 #include "port/log.hpp"
 #include "port/memory.hpp"
+#include "port/savestate.hpp"
 
 #include <aurora/aurora.h>
 #include <aurora/dvd.h>
 #include <aurora/main.h>
 #include <dolphin/gx.h>
 
+#include <crt_externs.h>
+#include <mach-o/dyld.h>
+#include <spawn.h>
 #include <sys/mman.h>
 
+#include <climits>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -34,6 +39,7 @@ void initArenas();
 
 namespace port::macos {
 void configureApplication();
+void installSaveStateMenu(SDL_Window* window);
 }
 
 namespace {
@@ -44,7 +50,7 @@ constexpr uint32_t kMem1Size = 64u << 20;
 constexpr uint32_t kMem2Size = 256u << 20;
 constexpr uint32_t kMainStackSize = 8u << 20;
 
-OSThread sDefaultThread;
+PORT_SAVED OSThread sDefaultThread;  // the game's main thread
 
 void auroraLog(AuroraLogLevel level, const char* module, const char* message, unsigned int len) {
     using port::log::Level;
@@ -105,7 +111,30 @@ _port_call_on_stack:
     ret
 )");
 
+// Save states hold absolute pointers, so they need the game at the same
+// addresses on every launch: relaunch once with ASLR off, the way debuggers
+// start programs. If that fails, states still work until the game quits.
+void relaunchWithoutAslr(char** argv) {
+    if (_dyld_get_image_vmaddr_slide(0) == 0 || getenv("SMG_NO_ASLR_RELAUNCH") != nullptr) {
+        return;
+    }
+    setenv("SMG_NO_ASLR_RELAUNCH", "1", 1);
+    char path[PATH_MAX];
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) != 0) {
+        return;
+    }
+    constexpr short kDisableAslr = 0x0100;  // _POSIX_SPAWN_DISABLE_ASLR (xnu)
+    posix_spawnattr_t attr;
+    posix_spawnattr_init(&attr);
+    posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETEXEC | kDisableAslr);
+    const int rc = posix_spawn(nullptr, path, nullptr, &attr, argv, *_NSGetEnviron());  // returns only on failure
+    posix_spawnattr_destroy(&attr);
+    PORT_WARN("main", "couldn't relaunch without ASLR ({}); save states will only load in this session", rc);
+}
+
 int main(int argc, char** argv) {
+    relaunchWithoutAslr(argv);
     if (getenv("SMG_DEBUG") != nullptr) {
         port::log::setMinLevel(port::log::Level::Debug);
     }
@@ -135,7 +164,8 @@ int main(int argc, char** argv) {
     config.logLevel = LOG_INFO;
     config.mem1Size = 0;  // the port manages game memory itself
     config.mem2Size = 0;
-    aurora_initialize(argc, argv, &config);
+    const AuroraInfo info = aurora_initialize(argc, argv, &config);
+    port::macos::installSaveStateMenu(info.window);
 
     GXSetAuroraPhysicalResolver(resolvePhysical);
     aurora_dvd_set_callback_dispatcher(dvdDispatch);

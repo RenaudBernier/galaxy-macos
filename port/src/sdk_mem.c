@@ -60,6 +60,8 @@ s32 __abs(s32 x) {
     return x < 0 ? -x : x;
 }
 
+// The heap code's globals are game state, like the game's own (prelude.h).
+#pragma clang section bss = "__DATA,__game_bss" data = "__DATA,__game_data"
 #include "../../src/RVL_SDK/mem/mem_heapCommon.c"
 #include "../../src/RVL_SDK/mem/mem_expHeap.c"
 #include "../../src/RVL_SDK/mem/mem_allocator.c"

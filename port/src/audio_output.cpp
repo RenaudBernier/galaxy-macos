@@ -100,4 +100,11 @@ double outputQueuedSeconds() {
     return SDL_GetAudioStreamQueued(sStream) / 4.0 / sStreamRate;
 }
 
+void outputFlush() {
+    std::lock_guard lock(sMutex);
+    if (sStream != nullptr) {
+        SDL_ClearAudioStream(sStream);
+    }
+}
+
 }  // namespace port::audio

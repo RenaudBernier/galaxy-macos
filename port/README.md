@@ -41,6 +41,7 @@ Environment options:
 | `SMG_LANGUAGE`, `SMG_ASPECT` | system language / 4:3 or 16:9 |
 | `SMG_NOAUDIO=1`, `SMG_VOLUME=0..1` | disable audio / output gain |
 | `SMG_NAND_DIR=<dir>` | use another save directory (e.g. a scratch one) |
+| `SMG_STATE_DIR=<dir>` | use another directory for save states |
 | `SMG_INPUT_RECORD=<file>` | record the inputs as an `SMG_INPUT_SCRIPT` timeline |
 | `SMG_INPUT_SCRIPT="frame:TOKENS;..."` | scripted inputs (see `src/input.cpp`); `AUTOA` answers "press A" prompts |
 
@@ -61,6 +62,23 @@ Environment options:
 | HOME (no menu)  |                           | Guide                    |
 | Tilt remote     | I / K / J / L             |                          |
 | Hold upright    | V (toggle)                |                          |
+
+## Save states
+
+The **States** menu in the menu bar saves the whole game into one of five
+slots and loads it back: **Save State** (Shift+Cmd+1 to 5) and **Load State**
+(Cmd+1 to 5). Each slot shows when it was saved. States are kept in
+`~/Library/Application Support/SuperMarioGalaxy/states`, apart from the game's
+own save file, and last across launches.
+
+- A state loads only into the build of the game that saved it.
+- States are taken and loaded between frames, when the game isn't in the
+  middle of something. While it is (loading a stage, for instance), the request
+  waits for up to three seconds, then the window title says it can't be done
+  right now.
+- To load states saved in an earlier session, the game has to sit at the same
+  memory addresses every time, so it relaunches itself once at startup with
+  address space layout randomization turned off, as debuggers launch programs.
 
 ## How it works
 
