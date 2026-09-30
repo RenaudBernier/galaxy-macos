@@ -27,11 +27,17 @@
 #include <sys/mman.h>
 
 #include <climits>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 
 extern "C" void GameMain(void);
+
+namespace port::sc {
+// Picks the default layouts (4:3 or 16:9) from the display's shape (sc.cpp).
+void detectDisplayShape(SDL_Window* window);
+}  // namespace port::sc
 
 namespace port::os {
 void initArenas();
@@ -160,11 +166,23 @@ int main(int argc, char** argv) {
     config.vsync = false;  // the VI retrace timer paces frames
     config.windowWidth = 1280;
     config.windowHeight = 720;
+    if (const char* size = getenv("SMG_WINDOW")) {
+        // Initial window size, e.g. SMG_WINDOW=1920x800; any shape works.
+        int width = 0;
+        int height = 0;
+        if (sscanf(size, "%dx%d", &width, &height) == 2 && width > 0 && height > 0) {
+            config.windowWidth = width;
+            config.windowHeight = height;
+        } else {
+            PORT_WARN("main", "ignoring SMG_WINDOW={} (expected WIDTHxHEIGHT)", size);
+        }
+    }
     config.logCallback = auroraLog;
     config.logLevel = LOG_INFO;
     config.mem1Size = 0;  // the port manages game memory itself
     config.mem2Size = 0;
     const AuroraInfo info = aurora_initialize(argc, argv, &config);
+    port::sc::detectDisplayShape(info.window);
     port::macos::installSaveStateMenu(info.window);
 
     GXSetAuroraPhysicalResolver(resolvePhysical);

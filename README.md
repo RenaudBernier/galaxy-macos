@@ -69,8 +69,9 @@ Status
 ======
 
 Boot, the title screen, file select, the prologue and gameplay run at 60 fps
-with sound, and every galaxy loads. Save states (five slots, in the menu bar's
-States menu) save and load the whole game, except while it's busy loading. An
+with sound, and every galaxy loads. The game fills the window at any aspect
+ratio, fullscreen included. Save states (five slots, in the menu bar's States
+menu) save and load the whole game, except while it's busy loading. An
 experimental 120 fps mode (interpolated frames on 120 Hz displays) is on the
 [`120fps`](https://github.com/RenaudBernier/galaxy-macos/tree/120fps) branch.
 Miis and the HOME Menu are disabled, and later-game content has not been fully

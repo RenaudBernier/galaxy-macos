@@ -2,6 +2,9 @@
 #include "Game/Util/MathUtil.hpp"
 #include "Game/Util/ScreenUtil.hpp"
 #include "Game/Util/SystemUtil.hpp"
+#ifdef TARGET_PC
+#include <port/screen.h>
+#endif
 
 void CameraContext_FORCE_MATCH_SDATA2() {
     (void)1.0f;
@@ -43,6 +46,9 @@ const TPos3f& CameraContext::getInvViewMtx() const {
 }
 
 f32 CameraContext::getAspect() const {
+#ifdef TARGET_PC
+    return PortScreenAspect();
+#endif
     if (MR::isScreen16Per9()) {
         return 16.0f / 9.0f;
     } else {

@@ -79,11 +79,15 @@ void MoviePlayerSimple::draw() const {
 
         u32 frameBufferWidth;
 
+#ifdef TARGET_PC
+        frameBufferWidth = MR::getFrameBufferWidth() * (16.0f / 9.0f) * MR::getScreenHeight() / MR::getScreenWidth() + 0.5f;
+#else
         if (MR::isScreen16Per9()) {
             frameBufferWidth = MR::getFrameBufferWidth();
         } else {
             frameBufferWidth = 832;
         }
+#endif
 
         u32 ySize = mMovie->mVideoInfo.ySize;
         u32 v4 = (MR::getFrameBufferWidth() - frameBufferWidth) / 2;

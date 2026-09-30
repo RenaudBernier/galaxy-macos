@@ -10,6 +10,9 @@ namespace MR {
     u32 getViWidth();
     f32 getSafetyVIScreenWidthRatio();
     s32 getScreenWidth();
+#ifdef TARGET_PC
+    f32 getLayoutAdjustScaleX();
+#endif
     inline s32 getScreenHeight() NO_INLINE {
         return JUTVideo::getManager()->getEfbHeight();
     }

@@ -1,4 +1,7 @@
 #include "Game/Util/ScreenUtil.hpp"
+#ifdef TARGET_PC
+#include <port/screen.h>
+#endif
 #include "Game/Scene/GameSceneFunction.hpp"
 #include "Game/Scene/PlayTimerScene.hpp"
 #include "Game/Scene/SceneObjHolder.hpp"
@@ -109,8 +112,26 @@ namespace MR {
     }
 
     s32 getScreenWidth() {
+#ifdef TARGET_PC
+        // The screen spans the window, in units as tall as they are wide (the
+        // Wii's 832 made up for the TV's non-square pixels in 16:9).
+        return static_cast< s32 >(getScreenHeight() * PortScreenAspect() + 0.5f);
+#else
         return isScreen16Per9() ? 832 : 608;
+#endif
     }
+
+#ifdef TARGET_PC
+    // Horizontal scale of layout panes that follow the screen's aspect ratio.
+    // Layouts are drawn 608 units wide across the whole screen, so this keeps
+    // them in proportion, but never lets the 16:9 layouts (designed for 16:9)
+    // or the 4:3 ones run off a narrower screen.
+    f32 getLayoutAdjustScaleX() {
+        const f32 proportional = 608.0f / (getScreenHeight() * PortScreenAspect());
+        const f32 widest = isScreen16Per9() ? 0.75f : 1.0f;
+        return proportional < widest ? proportional : widest;
+    }
+#endif
 
     s32 getSafetyFrameWidth() {
         s32 viWidthMax = static_cast< u16 >(RenderModeObj::getViWidthMax());

@@ -134,7 +134,11 @@ void ImageEffectLocalUtil::sendTextureVertex(s32 divisions, s32 tile) {
 #pragma push
 #pragma global_optimizer off
 void ImageEffectLocalUtil::blurTexture(JUTTexture* pTexture, s32 divisions, s32 tile, u32 sampleCount, f32 radius, f32 intensity) {
+#ifdef TARGET_PC
+    f32 aspect = MR::getScreenWidth() / 608.0f;
+#else
     f32 aspect = MR::isScreen16Per9() ? 1.333f : 1.0f;
+#endif
     f32 verticalRadius = radius * aspect;
     s32 sampleIntensity = 255.0f * intensity / sampleCount;
 

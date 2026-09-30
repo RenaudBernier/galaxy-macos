@@ -17,6 +17,7 @@
 #include "Game/Util/NerveUtil.hpp"
 #include "Game/Util/ObjUtil.hpp"
 #include "Game/Util/StringUtil.hpp"
+#include "Game/Util/ScreenUtil.hpp"
 #include "Game/Util/SystemUtil.hpp"
 #include <JSystem/JKernel/JKRDvdRipper.hpp>
 
@@ -222,9 +223,13 @@ void LogoScene::initLayout() {
                             &MR::NewDeleteAllocator::sAllocator);
     mIsbnManager->setNumber(pIsbnNumber, pRegistNumber, pOtherNumber);
 
+#ifdef TARGET_PC
+    mIsbnManager->setAdjustRate(MR::getLayoutAdjustScaleX(), 1.0f);
+#else
     if (MR::isScreen16Per9()) {
         mIsbnManager->setAdjustRate(0.75f, 1.0f);
     }
+#endif
 }
 
 bool LogoScene::tryFadeinLayout(LayoutActor* pActor) {

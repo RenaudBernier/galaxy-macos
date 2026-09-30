@@ -196,6 +196,14 @@ void LayoutManager::movement() {
 }
 
 void LayoutManager::calcAnim() {
+#ifdef TARGET_PC
+    {
+        nw4r::math::VEC2 scale;
+        scale.x = MR::getLayoutAdjustScaleX();
+        scale.y = 1.0f;
+        mDrawInfo.SetLocationAdjustScale(scale);
+    }
+#else
     if (MR::isScreen16Per9()) {
         nw4r::math::VEC2 scale;
         scale.x = 0.75f;
@@ -207,6 +215,7 @@ void LayoutManager::calcAnim() {
         scale.y = 1.0f;
         mDrawInfo.SetLocationAdjustScale(scale);
     }
+#endif
 
     calcAnimWithoutLocationAdjust(mDrawInfo);
 }
@@ -484,9 +493,14 @@ void LayoutManager::calcAnimWithoutLocationAdjust(const nw4r::lyt::DrawInfo& rDr
             nw4r::lyt::Pane* pPane =
                 mPaneInfoList[i].mPaneCtrl != nullptr ? mPaneInfoList[i].mPaneCtrl->mPane : findPaneByName(mPaneInfoList[i].mName);
             PSMTXCopy(pPane->mGlbMtx, mPaneInfoList[i].mMtxRef);
+#ifdef TARGET_PC
+            // Layout units to screen units (the same in 4:3 on the Wii).
+            mPaneInfoList[i].mMtxRef[0][3] *= MR::getScreenWidth() / 608.0f;
+#else
             if (MR::isScreen16Per9()) {
                 mPaneInfoList[i].mMtxRef[0][3] *= MR::getScreenWidth() / 608.0f;
             }
+#endif
         }
     }
 }

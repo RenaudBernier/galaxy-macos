@@ -6,7 +6,8 @@
   for arm64 macOS against the host runtime and Aurora.
 * Boot, strap screen, title (with streamed music), file select, save data
   (host files), the prologue (picture book, Peach's letter) and gameplay, at a
-  steady 60 fps.
+  steady 60 fps, in a window of any shape (the view and HUD follow its
+  aspect ratio).
 * Save states: five slots in the States menu, lasting across launches (same
   build only).
 * THP movies: video (baseline JPEG with THP's quirks) and audio; the prologue

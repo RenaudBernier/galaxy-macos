@@ -47,7 +47,11 @@ void ParticleDrawExecutor::draw2D() const {
 
         f32 width;
         f32 height = static_cast< s32 >(JUTVideo::getManager()->getEfbHeight());
+#ifdef TARGET_PC
+        width = MR::getScreenWidth();
+#else
         width = MR::isScreen16Per9() ? MR::getScreenWidth() : 608.0f;
+#endif
         width *= 0.5f;
         height *= 0.5f;
 

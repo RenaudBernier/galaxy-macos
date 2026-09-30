@@ -18,6 +18,7 @@
 #include <aurora/aurora.h>
 #include <aurora/event.h>
 #include <aurora/gfx.h>
+#include <dolphin/gx/GXAurora.h>
 #include <revolution/vi.h>
 
 #include <pthread.h>
@@ -53,6 +54,18 @@ PORT_SAVED bool sDimming = false;
 OSThread* sRenderThread = nullptr;
 bool sFrameOpen = false;
 bool sQuitRequested = false;
+float sScreenAspect = 16.0f / 9.0f;
+
+// The game reads the aspect ratio while it builds a frame; sample it between
+// frames so a window resize never splits one.
+void updateScreenAspect() {
+    u32 width = 0;
+    u32 height = 0;
+    AuroraGetRenderSize(&width, &height);
+    if (width != 0 && height != 0) {
+        sScreenAspect = static_cast<float>(width) / static_cast<float>(height);
+    }
+}
 
 void retraceInterrupt() {
     const u32 count = ++sRetraceCount;
@@ -110,6 +123,7 @@ void pumpEvents() {
     aurora_end_frame();
     sFrameOpen = false;
     pumpEvents();
+    updateScreenAspect();
     port::savestate::processRequests();
     while (!aurora_begin_frame()) {
         // Window not presentable (e.g. minimized).
@@ -134,6 +148,7 @@ void init() {
 void beginFirstFrame() {
     beginHostWork();
     pumpEvents();
+    updateScreenAspect();
     while (!aurora_begin_frame()) {
         pumpEvents();
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
@@ -211,5 +226,7 @@ BOOL VIResetDimmingCount(void) { return TRUE; }
 u32 VIGetCurrentLine(void) { return 0; }
 u32 VIGetScanMode(void) { return 2; }  // progressive
 void VISetTrapFilter(VIBool) {}
+
+float PortScreenAspect(void) { return sScreenAspect; }
 
 }  // extern "C"

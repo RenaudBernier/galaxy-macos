@@ -38,12 +38,26 @@ Environment options:
 |---|---|
 | `SMG_DEBUG=1` | verbose logging |
 | `SMG_QUIET=1` | hide the game's own debug output |
-| `SMG_LANGUAGE`, `SMG_ASPECT` | system language / 4:3 or 16:9 |
+| `SMG_LANGUAGE` | system language (0-9) |
+| `SMG_WINDOW=<width>x<height>` | initial window size (default 1280x720) |
+| `SMG_ASPECT=4:3` or `16:9` | which layouts the HUD and menus use (see below) |
 | `SMG_NOAUDIO=1`, `SMG_VOLUME=0..1` | disable audio / output gain |
 | `SMG_NAND_DIR=<dir>` | use another save directory (e.g. a scratch one) |
 | `SMG_STATE_DIR=<dir>` | use another directory for save states |
 | `SMG_INPUT_RECORD=<file>` | record the inputs as an `SMG_INPUT_SCRIPT` timeline |
 | `SMG_INPUT_SCRIPT="frame:TOKENS;..."` | scripted inputs (see `src/input.cpp`); `AUTOA` answers "press A" prompts |
+
+## Screen shape
+
+The game fills the window at any aspect ratio: resize it or go fullscreen and
+the 3D view widens or narrows to match, with the HUD and menus kept in
+proportion. Movies keep their 16:9 shape.
+
+The HUD and menus come in the game's 4:3 and 16:9 versions. The 16:9 ones
+reach the edges of a 16:9 screen but need one at least that wide, so they are
+used on 16:9 and wider displays; on narrower displays (such as a MacBook's
+16:10 screen) the 4:3 versions are used, centered on wider windows.
+`SMG_ASPECT` overrides the choice.
 
 ## Controls (emulated Wii Remote + Nunchuk)
 
